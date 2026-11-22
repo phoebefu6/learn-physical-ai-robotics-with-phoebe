@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Practitioner session 6 of 10. Domain randomization: train in simulation on scenes that are deliberately wrong, so the real one looks like one more variation. Tobin et al. (2017) read at source, their ablation of which knobs mattered, and a live width grid on constructed Wrenfield data that shows when wider stops helping and starts hurting.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Domain randomization - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Practitioner session 6 of 10. What to randomize, which knobs mattered in the original ablation, and how wide is too wide, computed live on a constructed bench.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/p6-domain-randomization.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Domain randomization - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="Randomize the simulator so reality is one more sample. Then find the width where it stops helping.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Practitioner session 6 · Domain randomization - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Practitioner session 6 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Practitioner session 6 of 10</div>
+    <h1>Domain <span class="accent">randomization</span></h1>
+    <p class="sub">A simulator is never the real cell. Domain randomization stops trying to make it match and instead makes it vary: random textures, random lights, a camera that never sits in quite the same place, until the real world looks like one more variation the model has already seen. Tonight you read the idea at its source, look at which knobs actually mattered in the original ablation, and then turn two knobs yourself on Wrenfield Lab's grasp bench to find the width where randomizing stops helping and starts hurting. Wrenfield Lab and every one of its trials are constructed; the research numbers are real and cited.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Advanced</span>
+      <span class="chip audience">ML engineers training policies in simulation</span>
+      <span class="chip audience">Data leads who own the sim-to-real budget</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:3">3-15 · The idea and its ablation</span>
+      <span class="a3" style="flex:2">15-23 · How wide</span>
+      <span class="a4" style="flex:5">23-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Wrenfield's simulator says 100 percent; the real bench says 29 of 50</h2>
+    </div>
+    <p class="lede">Wrenfield Lab (constructed) trained its parcel-grasp policy on 400 simulated episodes rendered under one lighting setting and one camera position. In simulation it never missed. On the real packing bench, which is dimmer than the simulator and has its camera mounted a little differently, it succeeded 29 times in 50. That 42-point gap between the simulator and the real cell is the problem domain randomization was invented for. The fix is not a better simulator. It is a simulator that refuses to be consistent.</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> The idea as Tobin et al. (2017) wrote it: what they randomized, how much, and what it bought (1.5 cm real localization, 38 of 40 grasps, from simulated images alone). Their ablation, read as a priority list: distractors critical, camera a slight boost, noise negligible. A live width grid on Wrenfield's constructed bench that shows widths are hyperparameters with a sweet spot: the right widths take 29 of 50 to 46, the widest take it down to 19. And a lab notebook of the smallest widths that work and the point where they break.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why randomize instead of match<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The obvious way to close a sim-to-real gap is to make the simulator more realistic: measure the real lights, photograph the real textures, model the real lens. Every one of those is expensive, and every one is still wrong in some detail the model will find. Domain randomization takes the opposite bet. If the training data contains enough deliberately unrealistic variation, the model has to learn the features that survive all of it, and the real scene becomes just another draw.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>Tobin, Fong, Ray, Schneider, Zaremba and Abbeel (2017) trained an object detector only on simulated images with non-realistic random textures. Without a single real image in training, it located real objects to within 1.5 cm on average, stayed robust to distractors and partial occlusion, and let a robot detect and pick the target in 38 of 40 trials in cluttered scenes.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Words for tonight<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Domain randomization.</strong> Varying the simulator's appearance and setup at random in every training episode, so the model cannot rely on any one rendering.</li>
+          <li><strong>Width.</strong> How far a randomized setting may move from its centre: "lighting plus or minus 0.4", "camera plus or minus 3 cm". A width is a hyperparameter, chosen and recorded like a learning rate.</li>
+          <li><strong>Distractor.</strong> An object in the scene that is not the target. Randomizing their number and shape teaches the model what to ignore.</li>
+          <li><strong>Sim-to-real gap.</strong> Success in simulation minus success on the real robot, in percentage points.</li>
+          <li><strong>Ablation.</strong> Removing one ingredient at a time and measuring what it was worth.</li>
+          <li><strong>Uniform randomization.</strong> Drawing every setting with equal probability across its width, the default in most pipelines.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the idea at source: what was randomized and what it bought</span>
+      <h2>Make the simulator vary until reality is one more sample</h2>
+      <span class="tag concept">7 min live</span>
+    </div>
+    <p class="lede">Read the 2017 paper the way a data team reads a pipeline spec: which columns vary, over what range, and what the output was. Tobin et al. did not randomize one thing. They randomized nearly everything that a camera image depends on, and each knob had a declared range. The figure lays the knobs out on the left and the result on the right: a cloud of scenes, none of them realistic, with the real scene sitting somewhere inside it.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn diagram of the randomization knobs in Tobin et al. 2017. Six knob boxes on the left: distractors, 0 to 10 per scene; textures of objects, table, floor, skybox and robot; camera position inside a 10 by 5 by 10 centimetre box; camera angle offset up to 0.1 radian and field of view scaled up to 5 percent; number, position, orientation and specular of lights; type and amount of image noise. Arrows run from every knob into a cloud of simulated scene tiles on the right. Inside the cloud one tile, highlighted in marigold, is the real scene, one more draw. Result: 1.5 centimetre average real localization, 38 of 40 grasps; simulated error 0.3 to 0.5 centimetre, so a gap remains.">
+        <defs>
+          <filter id="wrnp6aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="61" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp6aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp6aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp6aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp6aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp6aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp6aK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp6aA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp6aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp6aH" x="30" y="30">WHAT TOBIN ET AL. (2017) RANDOMIZED, AND WHERE THE REAL SCENE SITS</text>
+
+        <g filter="url(#wrnp6aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="56" width="272" height="42" rx="8" transform="rotate(-0.4 166 77)" fill="#FFFFFF"/>
+          <rect x="30" y="106" width="272" height="42" rx="8" transform="rotate(0.3 166 127)" fill="#FFFFFF"/>
+          <rect x="30" y="156" width="272" height="42" rx="8" transform="rotate(-0.3 166 177)" fill="#FCEFF7"/>
+          <rect x="30" y="206" width="272" height="42" rx="8" transform="rotate(0.4 166 227)" fill="#FCEFF7"/>
+          <rect x="30" y="256" width="272" height="42" rx="8" transform="rotate(-0.3 166 277)" fill="#FFFFFF"/>
+          <rect x="30" y="306" width="272" height="42" rx="8" transform="rotate(0.3 166 327)" fill="#FFFFFF"/>
+          <path d="M306 77 L360 186" marker-end="url(#wrnp6aAr)"/>
+          <path d="M306 127 L360 187" marker-end="url(#wrnp6aAr)"/>
+          <path d="M306 177 L360 189" marker-end="url(#wrnp6aAr)"/>
+          <path d="M306 227 L360 191" marker-end="url(#wrnp6aAr)"/>
+          <path d="M306 277 L360 193" marker-end="url(#wrnp6aAr)"/>
+          <path d="M306 327 L360 194" marker-end="url(#wrnp6aAr)"/>
+          <ellipse cx="610" cy="190" rx="240" ry="140" fill="#FCEFF7"/>
+          <rect x="430" y="130" width="52" height="34" rx="3" transform="rotate(-3 456 147)" fill="url(#wrnp6aHc)"/>
+          <rect x="500" y="88" width="52" height="34" rx="3" transform="rotate(4 526 105)" fill="#FFFFFF"/>
+          <rect x="585" y="68" width="52" height="34" rx="3" transform="rotate(-2 611 85)" fill="#EBB8D7"/>
+          <rect x="670" y="84" width="52" height="34" rx="3" transform="rotate(5 696 101)" fill="url(#wrnp6aHc)"/>
+          <rect x="750" y="120" width="52" height="34" rx="3" transform="rotate(-4 776 137)" fill="#FFFFFF"/>
+          <rect x="780" y="185" width="52" height="34" rx="3" transform="rotate(3 806 202)" fill="#EBB8D7"/>
+          <rect x="690" y="150" width="52" height="34" rx="3" transform="rotate(-5 716 167)" fill="#FFFFFF"/>
+          <rect x="495" y="160" width="52" height="34" rx="3" transform="rotate(3 521 177)" fill="#FFFFFF"/>
+          <rect x="420" y="205" width="52" height="34" rx="3" transform="rotate(-4 446 222)" fill="#EBB8D7"/>
+          <rect x="500" y="250" width="52" height="34" rx="3" transform="rotate(2 526 267)" fill="url(#wrnp6aHc)"/>
+          <rect x="590" y="240" width="52" height="34" rx="3" transform="rotate(-3 616 257)" fill="#FFFFFF"/>
+          <rect x="680" y="215" width="52" height="34" rx="3" transform="rotate(4 706 232)" fill="url(#wrnp6aHc)"/>
+          <rect x="570" y="168" width="96" height="46" rx="4" transform="rotate(-1 618 191)" fill="#F4B63C"/>
+          <!-- doodle: a camera -->
+          <rect x="800" y="34" width="36" height="22" rx="4" fill="#FFFFFF"/>
+          <circle cx="818" cy="45" r="6" fill="#EBB8D7"/>
+          <path d="M806 34 L810 28 L820 28 L824 34"/>
+        </g>
+
+        <text class="wrnp6aL" x="44" y="74">Distractors</text>
+        <text class="wrnp6aS" x="44" y="90">0 to 10 per scene, random number and shape</text>
+        <text class="wrnp6aL" x="44" y="124">Textures</text>
+        <text class="wrnp6aS" x="44" y="140">all objects, table, floor, skybox, robot</text>
+        <text class="wrnp6aL" x="44" y="174">Camera position</text>
+        <text class="wrnp6aK" x="44" y="190">inside a 10 x 5 x 10 cm box</text>
+        <text class="wrnp6aL" x="44" y="224">Camera angle and field of view</text>
+        <text class="wrnp6aK" x="44" y="240">up to 0.1 rad; field of view up to 5%</text>
+        <text class="wrnp6aL" x="44" y="274">Lights</text>
+        <text class="wrnp6aS" x="44" y="290">number, position, orientation, specular</text>
+        <text class="wrnp6aL" x="44" y="324">Image noise</text>
+        <text class="wrnp6aS" x="44" y="340">type and amount</text>
+
+        <text class="wrnp6aL" x="618" y="188" text-anchor="middle">real scene</text>
+        <text class="wrnp6aK" x="618" y="204" text-anchor="middle">one more draw</text>
+        <text class="wrnp6aA" x="610" y="350" text-anchor="middle">every tile: one simulated training image</text>
+
+        <text class="wrnp6aN" x="30" y="374">Result, simulated images only: real objects located to 1.5 cm on average; 38 of 40 grasps in clutter.</text>
+        <text class="wrnp6aN" x="30" y="394">Simulated error stayed 0.3 to 0.5 cm, so the authors still report a sim-to-real gap.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the bet is coverage, not realism: if the cloud is wide enough in the right directions, the real scene lands inside it.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Reading the knobs like a data spec<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Every knob has a range, and the range is a decision.</strong> The camera was not placed anywhere at all. Each sample sat inside a 10 by 5 by 10 cm box around a hand-placed starting point that roughly matched the real camera, with its viewing angle offset by up to 0.1 rad and its field of view scaled by up to 5 percent. That is a width centred on a guess about reality, not a width centred on nothing.</p>
+        <p><strong>The textures were deliberately unrealistic.</strong> Random textures on every object, the table, the floor, the skybox and the robot itself. The model cannot learn "the target is the red one" because red means nothing from one image to the next; it has to learn shape and position.</p>
+        <p><strong>Clutter was part of the training set.</strong> Between 0 and 10 distractor objects per scene. Part 2 shows this turned out to be the most important single knob.</p>
+        <p><strong>Then they measured on the real robot.</strong> 1.5 cm average localization error, and 38 of 40 successful grasps in cluttered scenes. In practitioner session 7 terms: 38 of 40 is a rate with a trial count, and it should travel with its interval.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>What the result does not show<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>The gap did not close.</strong> In simulation the detector's error was 0.3 to 0.5 cm; on real images it was 1.5 cm. The authors state that the model still over-fits to simulation. Randomization shrinks a sim-to-real gap; it does not promise to remove it.</p>
+        <p><strong>There was nothing real to validate on.</strong> With no real data at training time, the authors note that "no validation on real data can be done during training". Every choice of width was checked only after the fact, on the robot. That is the practical cost of the method: your tuning loop runs through the real cell.</p>
+        <p><strong>Data volume mattered, up to a point.</strong> The detector was relatively accurate with as few as 5,000 training samples (starting from pre-trained weights) and kept improving up to about 50,000. With 10,000 images, performance degraded significantly when fewer than 1,000 unique textures were used. Variety is a resource you can run short of, like rows.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers the ablation: which knobs mattered</span>
+      <h2>Not every knob is worth the same</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">Randomizing everything is easy to say and expensive to build. An ablation tells you where to spend. Tobin et al. retrained with one ingredient removed at a time and measured real detection error under three conditions: the object alone, the object among distractors, and the object partly hidden. Lower is better.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn grouped bar chart of Tobin et al. 2017 Table II, real detection error in centimetres for object only, with distractors, and with occlusions. Full method 1.3, 1.8, 2.4. No camera randomization 2.0, 2.4, 2.9. No distractors in training 1.5, 7.2, 7.4, with the 7.2 distractor bar highlighted in marigold. No noise 1.4, 1.9, 2.4. Authors' words: camera randomization a slight boost, distractors critical, noise negligible.">
+        <defs>
+          <filter id="wrnp6bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="63" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp6bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp6bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp6bH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp6bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp6bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp6bA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp6bV { font: 800 16px Inter, sans-serif; fill: #6B0546; }
+          .wrnp6bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp6bH" x="30" y="28">REAL DETECTION ERROR, CM, ONE INGREDIENT REMOVED AT A TIME (TOBIN ET AL. 2017, TABLE II)</text>
+
+        <g filter="url(#wrnp6bSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="160" y="42" width="16" height="12" rx="2" fill="#FFFFFF"/>
+          <rect x="300" y="42" width="16" height="12" rx="2" fill="url(#wrnp6bHc)"/>
+          <rect x="440" y="42" width="16" height="12" rx="2" fill="#FCEFF7"/>
+          <path d="M110 80 L110 300 L800 300"/>
+          <path d="M104 245 L110 245 M104 190 L110 190 M104 135 L110 135 M104 80 L110 80"/>
+          <rect x="161" y="264.25" width="34" height="35.75" rx="2" fill="#FFFFFF"/>
+          <rect x="203" y="250.5" width="34" height="49.5" rx="2" fill="url(#wrnp6bHc)"/>
+          <rect x="245" y="234" width="34" height="66" rx="2" fill="#FCEFF7"/>
+          <rect x="331" y="245" width="34" height="55" rx="2" fill="#FFFFFF"/>
+          <rect x="373" y="234" width="34" height="66" rx="2" fill="url(#wrnp6bHc)"/>
+          <rect x="415" y="220.25" width="34" height="79.75" rx="2" fill="#FCEFF7"/>
+          <rect x="501" y="258.75" width="34" height="41.25" rx="2" fill="#FFFFFF"/>
+          <rect x="543" y="102" width="34" height="198" rx="2" fill="#F4B63C"/>
+          <rect x="585" y="96.5" width="34" height="203.5" rx="2" fill="#FCEFF7"/>
+          <rect x="671" y="261.5" width="34" height="38.5" rx="2" fill="#FFFFFF"/>
+          <rect x="713" y="247.75" width="34" height="52.25" rx="2" fill="url(#wrnp6bHc)"/>
+          <rect x="755" y="234" width="34" height="66" rx="2" fill="#FCEFF7"/>
+          <!-- doodle: a cluster of distractor objects -->
+          <rect x="806" y="40" width="16" height="14" rx="2" transform="rotate(-8 814 47)" fill="#FFFFFF"/>
+          <circle cx="836" cy="48" r="7" fill="#EBB8D7"/>
+          <path d="M818 68 L828 56 L838 68 Z" fill="#FFFFFF"/>
+        </g>
+
+        <text class="wrnp6bS" x="182" y="53">object only</text>
+        <text class="wrnp6bS" x="322" y="53">with distractors</text>
+        <text class="wrnp6bS" x="462" y="53">with occlusions</text>
+
+        <text class="wrnp6bA" x="100" y="304" text-anchor="end">0</text>
+        <text class="wrnp6bA" x="100" y="249" text-anchor="end">2</text>
+        <text class="wrnp6bA" x="100" y="194" text-anchor="end">4</text>
+        <text class="wrnp6bA" x="100" y="139" text-anchor="end">6</text>
+        <text class="wrnp6bA" x="100" y="84" text-anchor="end">8 cm</text>
+
+        <text class="wrnp6bV" x="178" y="257" text-anchor="middle">1.3</text>
+        <text class="wrnp6bV" x="220" y="243" text-anchor="middle">1.8</text>
+        <text class="wrnp6bV" x="262" y="227" text-anchor="middle">2.4</text>
+        <text class="wrnp6bV" x="348" y="238" text-anchor="middle">2.0</text>
+        <text class="wrnp6bV" x="390" y="227" text-anchor="middle">2.4</text>
+        <text class="wrnp6bV" x="432" y="213" text-anchor="middle">2.9</text>
+        <text class="wrnp6bV" x="518" y="251" text-anchor="middle">1.5</text>
+        <text class="wrnp6bV" x="560" y="95" text-anchor="middle">7.2</text>
+        <text class="wrnp6bV" x="602" y="89" text-anchor="middle">7.4</text>
+        <text class="wrnp6bV" x="688" y="254" text-anchor="middle">1.4</text>
+        <text class="wrnp6bV" x="730" y="240" text-anchor="middle">1.9</text>
+        <text class="wrnp6bV" x="772" y="227" text-anchor="middle">2.4</text>
+
+        <text class="wrnp6bL" x="220" y="322" text-anchor="middle">Full method</text>
+        <text class="wrnp6bL" x="390" y="322" text-anchor="middle">No camera randomization</text>
+        <text class="wrnp6bL" x="560" y="322" text-anchor="middle">No distractors</text>
+        <text class="wrnp6bL" x="730" y="322" text-anchor="middle">No noise</text>
+        <text class="wrnp6bS" x="220" y="340" text-anchor="middle">the reference</text>
+        <text class="wrnp6bA" x="390" y="340" text-anchor="middle">a slight boost</text>
+        <text class="wrnp6bA" x="560" y="340" text-anchor="middle">critical</text>
+        <text class="wrnp6bA" x="730" y="340" text-anchor="middle">negligible</text>
+
+        <text class="wrnp6bN" x="30" y="368">Removing distractors from training barely touches the clean scene (1.3 to 1.5 cm) and wrecks the</text>
+        <text class="wrnp6bN" x="30" y="386">cluttered one (1.8 to 7.2 cm). The model only learns to ignore clutter if clutter was in its training data.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold bar is the whole lesson of the ablation: the knob you skip shows up only in the condition it was meant to cover.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Reading Table II as a priority list<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Distractors: critical, in the authors' word.</strong> Without them, error with distractors present jumps from 1.8 to 7.2 cm, and with occlusions from 2.4 to 7.4 cm. On a clean table you would never have noticed: 1.3 against 1.5.</p>
+        <p><strong>Camera: a slight boost, consistently.</strong> Dropping camera randomization raises error under all three conditions, from 1.3 to 2.0, 1.8 to 2.4 and 2.4 to 2.9 cm. Small, but present everywhere.</p>
+        <p><strong>Noise: negligible.</strong> 1.4, 1.9 and 2.4 cm against the full method's 1.3, 1.8 and 2.4. If budget is short, this is the knob to build last.</p>
+        <p><strong>The data-team habit.</strong> Report ablations per condition, never as one averaged error. The averaged number would have hidden that one knob carried the whole cluttered-scene result.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Widths are hyperparameters, so log them like ones<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Each randomized setting carries a range, a sampling distribution and a centre. Those three numbers decide what the training data contains, which makes them part of the dataset's identity exactly as calibration was in practitioner session 2. A policy trained at "camera plus or minus 3 cm" and one trained at "plus or minus 12 cm" are trained on different datasets even if every other line of code is the same.</p>
+        <p>Practical consequences: store the widths with every simulated episode or every generated batch, sweep them the way you sweep a learning rate, and evaluate the sweep on the real cell with trial counts and intervals. Tobin et al.'s texture finding (performance degraded below 1,000 unique textures at 10,000 images) is a reminder that "how many distinct values did the randomizer actually produce" is itself a column worth logging.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers how wide is too wide: the constructed width grid and Mehta et al. (2019)</span>
+      <h2>Wider helps until it does not</h2>
+      <span class="tag concept">8 min live</span>
+    </div>
+    <p class="lede">If some randomization is good, is more always better? Turn the two knobs below and watch. The widget trains Wrenfield's constructed grasp policy in your browser on 400 simulated episodes with your lighting and camera widths, then scores it on the same 50 constructed real trials every time. The real cell is dimmer than the simulator's centre, its camera sits a little off, and its lens magnifies slightly. No real demonstrations are mixed in: this is randomization alone.</p>
+
+    <div class="wk" id="wrnp6-widths">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">Synthetic and constructed, declared here: Wrenfield's cell, seed 1122, 50 real trials, 400 simulated training episodes, no real demonstrations. Lighting bias 5d + 5d squared cm, real lighting 0.6 to 1.1, real camera offset N(0.2, 0.7) cm, real lens 1.08, grasp tolerance 1.0 cm. Real: the ridge solve and the Wilson interval. At the defaults (lighting 0.4, camera 3 cm) it prints 46 of 50, simulator 98.6%.</span>
+      </div>
+      <div class="wk-body">
+        <label class="sql-label" for="wrnp6-wl">Lighting width (plus or minus)</label>
+        <select class="sql-code" id="wrnp6-wl">
+          <option value="0">0, no lighting randomization</option>
+          <option value="0.2">0.2</option>
+          <option value="0.4" selected>0.4, the default</option>
+          <option value="0.7">0.7</option>
+          <option value="0.95">0.95, almost black to almost double</option>
+        </select>
+        <label class="sql-label" for="wrnp6-wc">Camera width (plus or minus, cm)</label>
+        <select class="sql-code" id="wrnp6-wc">
+          <option value="0">0, no camera randomization</option>
+          <option value="1.5">1.5</option>
+          <option value="3" selected>3, the default</option>
+          <option value="6">6</option>
+          <option value="12">12</option>
+        </select>
+        <div id="wrnp6-out"></div>
+        <div id="wrnp6-card"></div>
+        <p class="sql-note" id="wrnp6-verdict">...</p>
+      </div>
+      <div class="wk-foot" id="wrnp6-self">...</div>
+    </div>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 390" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn sketch of the mechanism behind over-randomization in the constructed world. The lighting effect on apparent position is a curve, 5d plus 5d squared centimetres, drawn for lighting changes from minus 0.95 to plus 0.95. The real cell, highlighted in marigold, covers lighting changes from minus 0.4 to plus 0.1. A straight line fitted over a narrow width of 0.4 hugs the curve inside the real cell. A straight line fitted over the wide width of 0.95 is pulled up by the bright extreme and sits well above the curve in the real cell. On the bench at lighting 0.95 and camera 12 centimetres, only 2 of 17 normal-light trials succeed.">
+        <defs>
+          <filter id="wrnp6cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="67" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp6cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp6cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp6cH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp6cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp6cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp6cK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp6cA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp6cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp6cH" x="30" y="28">WHY A STRAIGHT-LINE POLICY HATES A WIDE RANGE (CONSTRUCTED WORLD, SKETCH)</text>
+        <text class="wrnp6cA" x="78" y="48">apparent shift, cm</text>
+
+        <g filter="url(#wrnp6cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="224" y="56" width="120" height="236" rx="4" transform="rotate(0.3 284 174)" fill="#FEF4DD" stroke="#F4B63C" stroke-width="1.6"/>
+          <path d="M70 56 L70 296 L566 296"/>
+          <path d="M92 300 L92 292 M320 300 L320 292 M548 300 L548 292"/>
+          <path d="M92.0 262.2 L104.0 266.9 L116.0 271.0 L128.0 274.6 L140.0 277.6 L152.0 280.1 L164.0 282.0 L176.0 283.4 L188.0 284.2 L200.0 284.5 L212.0 284.2 L224.0 283.4 L236.0 282.0 L248.0 280.1 L260.0 277.6 L272.0 274.6 L284.0 271.0 L296.0 266.9 L308.0 262.2 L320.0 257.0 L332.0 251.2 L344.0 244.9 L356.0 238.0 L368.0 230.6 L380.0 222.6 L392.0 214.1 L404.0 205.0 L416.0 195.4 L428.0 185.2 L440.0 174.5 L452.0 163.2 L464.0 151.4 L476.0 139.0 L488.0 126.1 L500.0 112.6 L512.0 98.6 L524.0 84.0 L536.0 68.9 L548.0 53.2" stroke="#9B0865" stroke-width="2.6"/>
+          <path d="M236 289.6 L416 207.1" stroke="#6B0546" stroke-width="2.2"/>
+          <path d="M171.2 292.1 L548 119.4" stroke-dasharray="7 5"/>
+          <!-- doodle: a light bulb -->
+          <circle cx="810" cy="46" r="11" fill="#FFFFFF"/>
+          <path d="M804 58 L816 58 M805 63 L815 63 M808 68 L812 68"/>
+        </g>
+
+        <text class="wrnp6cK" x="232" y="74">real cell</text>
+        <text class="wrnp6cK" x="232" y="90">light 0.6 to 1.1</text>
+
+        <text class="wrnp6cA" x="556" y="60">the lighting curve</text>
+        <text class="wrnp6cL" x="556" y="126">wide fit, width 0.95</text>
+        <text class="wrnp6cL" x="424" y="226">narrow fit, width 0.4</text>
+
+        <text class="wrnp6cA" x="92" y="314" text-anchor="middle">-0.95</text>
+        <text class="wrnp6cA" x="320" y="314" text-anchor="middle">0</text>
+        <text class="wrnp6cA" x="548" y="314" text-anchor="middle">+0.95</text>
+        <text class="wrnp6cS" x="320" y="332" text-anchor="middle">lighting change d in simulation (darker to the left)</text>
+
+        <text class="wrnp6cN" x="610" y="168">Narrow width: the straight</text>
+        <text class="wrnp6cN" x="610" y="186">line hugs the curve where</text>
+        <text class="wrnp6cN" x="610" y="204">the real cell lives.</text>
+        <text class="wrnp6cN" x="610" y="236">Wide width: the extremes</text>
+        <text class="wrnp6cN" x="610" y="254">pull the line off the curve</text>
+        <text class="wrnp6cN" x="610" y="272">in ordinary light. Bench at</text>
+        <text class="wrnp6cN" x="610" y="290">0.95 and 12 cm: normal</text>
+        <text class="wrnp6cN" x="610" y="308">light only 2 of 17.</text>
+
+        <text class="wrnp6cN" x="30" y="358">A sketch of the mechanism, using the bench's declared lighting curve, not the fitted policy itself.</text>
+        <text class="wrnp6cN" x="30" y="376">Real effects and real policies differ; the trade (capacity spent on conditions that never occur) is the lesson.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - a simple policy fitted across a huge range is pulled toward the extremes and misses the middle, which is exactly where the real cell sits.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Reading the width grid<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Start at the defaults.</strong> Lighting 0.4, camera 3 cm: 46 of 50 on the real cell, simulator 98.6 percent, a gap of 6.6 points. With nothing randomized it was 29 of 50 and a gap of 42 points.</p>
+        <p><strong>The camera knob is an on-off switch here.</strong> Along the 0.4 row, camera widths of 1.5, 3, 6 and 12 cm all give 46 of 50. In this constructed world the camera's offset moves the parcel and the table fiducial by the same amount, a straight-line effect, so the moment the simulator varies the camera at all, the policy learns to subtract the fiducial. Varying it more teaches nothing new and, here, costs nothing either.</p>
+        <p><strong>The lighting knob has a sweet spot.</strong> With the camera on, lighting 0.2 and 0.4 both give 46; 0.7 gives 44 while the simulator itself falls to about 76 percent; 0.95 gives 19 of 50, with the simulator at about 48 percent. The harm comes from the lighting width, because the lighting effect is curved and the policy is a straight line (the figure above). Spread the training over almost-black to almost-double and the line is fitted to conditions the real cell never sees.</p>
+        <p><strong>Read the breakdown at 0.95.</strong> The scorecard shows where the misses live: ordinary light is the condition that collapses. The policy got worse precisely at the conditions the real cell is made of.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The disagreement: how wide is wide enough<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Mehta, Diaz, Golemo, Pal and Paull (2019) argue that domain randomization "may lead to suboptimal, high-variance policies", and attribute it to sampling environment parameters uniformly. Their answer is to choose which settings to sample, actively, rather than spreading training evenly across a wide range. Tobin et al. (2017) found that more variety helped, up to a point, in textures and training images. Both can be true, and the literature has not settled a general rule for how wide a width should be.</p>
+        <p>The working norm that follows: width is a per-robot judgement, made by sweeping and checked on the real cell, with trial counts and intervals next to every rate. A wide setting that looks safe in a design review can cost real accuracy; a narrow one can leave the real cell outside the cloud. Only the real trials decide.</p>
+        <p>One honest oddity in the constructed grid: at lighting 0.95, turning the camera width on drops the score from 25 to 19 of 50, the opposite of every other row. Fifty trials and a straight-line policy have quirks, and so will yours. Treat a single surprising cell as a reason to run more trials, not as a law.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ BUILD-ALONG ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Sweep the widths and keep a lab notebook</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">No Python tonight: the widget in Part 3 is your training run. You will find the smallest widths that reach the best score, over-randomize until it breaks, and compare the best randomization can do with what twenty real demonstrations do on the bench. Each step ends with a lab notebook line; the boxes hold the canon values for seed 1122, so you can check yours. The figure is the whole grid you are about to walk.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 404" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn heatmap of the constructed width grid, seed 1122, 50 real trials, no real demonstrations. Rows are lighting widths 0, 0.2, 0.4, 0.7 and 0.95; columns are camera widths 0, 1.5, 3, 6 and 12 centimetres. Lighting 0: 29 then 32 in every other column, simulator 100 percent. Lighting 0.2: 39 then 46, simulator 99.9 to 100. Lighting 0.4: 37 then 46, simulator about 98.5, with the default cell at camera 3 highlighted in marigold. Lighting 0.7: 32 then 44, simulator 76 to 79. Lighting 0.95: 25 then 19, simulator 47 to 48.">
+        <defs>
+          <filter id="wrnp6dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="71" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp6dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp6dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp6dH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp6dL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp6dK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp6dA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp6dV { font: 800 16px Inter, sans-serif; fill: #6B0546; }
+          .wrnp6dN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp6dH" x="30" y="28">REAL SUCCESSES OF 50 (AND SIMULATOR SUCCESS), SEED 1122, NO REAL DEMOS, CONSTRUCTED</text>
+        <text class="wrnp6dA" x="503" y="48" text-anchor="middle">camera width, plus or minus cm</text>
+        <text class="wrnp6dA" x="30" y="66">lighting width</text>
+        <text class="wrnp6dL" x="275" y="64" text-anchor="middle">0</text>
+        <text class="wrnp6dL" x="389" y="64" text-anchor="middle">1.5</text>
+        <text class="wrnp6dL" x="503" y="64" text-anchor="middle">3</text>
+        <text class="wrnp6dL" x="617" y="64" text-anchor="middle">6</text>
+        <text class="wrnp6dL" x="731" y="64" text-anchor="middle">12</text>
+
+        <g filter="url(#wrnp6dSk)" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="220" y="72" width="110" height="44" rx="4" fill="#FFFFFF"/>
+          <rect x="334" y="72" width="110" height="44" rx="4" fill="#FCEFF7"/>
+          <rect x="448" y="72" width="110" height="44" rx="4" fill="#FCEFF7"/>
+          <rect x="562" y="72" width="110" height="44" rx="4" fill="#FCEFF7"/>
+          <rect x="676" y="72" width="110" height="44" rx="4" fill="#FCEFF7"/>
+          <rect x="220" y="120" width="110" height="44" rx="4" fill="#FCEFF7"/>
+          <rect x="334" y="120" width="110" height="44" rx="4" fill="#EBB8D7"/>
+          <rect x="448" y="120" width="110" height="44" rx="4" fill="#EBB8D7"/>
+          <rect x="562" y="120" width="110" height="44" rx="4" fill="#EBB8D7"/>
+          <rect x="676" y="120" width="110" height="44" rx="4" fill="#EBB8D7"/>
+          <rect x="220" y="168" width="110" height="44" rx="4" fill="#FCEFF7"/>
+          <rect x="334" y="168" width="110" height="44" rx="4" fill="#EBB8D7"/>
+          <rect x="448" y="168" width="110" height="44" rx="4" transform="rotate(-0.6 503 190)" fill="#F4B63C" stroke-width="2.4"/>
+          <rect x="562" y="168" width="110" height="44" rx="4" fill="#EBB8D7"/>
+          <rect x="676" y="168" width="110" height="44" rx="4" fill="#EBB8D7"/>
+          <rect x="220" y="216" width="110" height="44" rx="4" fill="#FCEFF7"/>
+          <rect x="334" y="216" width="110" height="44" rx="4" fill="#EBB8D7"/>
+          <rect x="448" y="216" width="110" height="44" rx="4" fill="#EBB8D7"/>
+          <rect x="562" y="216" width="110" height="44" rx="4" fill="#EBB8D7"/>
+          <rect x="676" y="216" width="110" height="44" rx="4" fill="#EBB8D7"/>
+          <rect x="220" y="264" width="110" height="44" rx="4" fill="#FFFFFF"/>
+          <rect x="334" y="264" width="110" height="44" rx="4" fill="#FFFFFF"/>
+          <rect x="448" y="264" width="110" height="44" rx="4" fill="#FFFFFF"/>
+          <rect x="562" y="264" width="110" height="44" rx="4" fill="#FFFFFF"/>
+          <rect x="676" y="264" width="110" height="44" rx="4" fill="#FFFFFF"/>
+          <!-- doodle: a camera on a short mount -->
+          <rect x="806" y="84" width="36" height="22" rx="4" fill="#FFFFFF"/>
+          <circle cx="824" cy="95" r="6" fill="#EBB8D7"/>
+          <path d="M824 106 L824 124 M812 124 L836 124"/>
+        </g>
+
+        <text class="wrnp6dL" x="208" y="99" text-anchor="end">0</text>
+        <text class="wrnp6dL" x="208" y="147" text-anchor="end">0.2</text>
+        <text class="wrnp6dL" x="208" y="195" text-anchor="end">0.4</text>
+        <text class="wrnp6dL" x="208" y="243" text-anchor="end">0.7</text>
+        <text class="wrnp6dL" x="208" y="291" text-anchor="end">0.95</text>
+
+        <text class="wrnp6dV" x="275" y="94" text-anchor="middle">29</text><text class="wrnp6dK" x="275" y="109" text-anchor="middle">sim 100.0%</text>
+        <text class="wrnp6dV" x="389" y="94" text-anchor="middle">32</text><text class="wrnp6dK" x="389" y="109" text-anchor="middle">sim 100.0%</text>
+        <text class="wrnp6dV" x="503" y="94" text-anchor="middle">32</text><text class="wrnp6dK" x="503" y="109" text-anchor="middle">sim 100.0%</text>
+        <text class="wrnp6dV" x="617" y="94" text-anchor="middle">32</text><text class="wrnp6dK" x="617" y="109" text-anchor="middle">sim 100.0%</text>
+        <text class="wrnp6dV" x="731" y="94" text-anchor="middle">32</text><text class="wrnp6dK" x="731" y="109" text-anchor="middle">sim 100.0%</text>
+
+        <text class="wrnp6dV" x="275" y="142" text-anchor="middle">39</text><text class="wrnp6dK" x="275" y="157" text-anchor="middle">sim 100.0%</text>
+        <text class="wrnp6dV" x="389" y="142" text-anchor="middle">46</text><text class="wrnp6dK" x="389" y="157" text-anchor="middle">sim 99.9%</text>
+        <text class="wrnp6dV" x="503" y="142" text-anchor="middle">46</text><text class="wrnp6dK" x="503" y="157" text-anchor="middle">sim 99.9%</text>
+        <text class="wrnp6dV" x="617" y="142" text-anchor="middle">46</text><text class="wrnp6dK" x="617" y="157" text-anchor="middle">sim 99.9%</text>
+        <text class="wrnp6dV" x="731" y="142" text-anchor="middle">46</text><text class="wrnp6dK" x="731" y="157" text-anchor="middle">sim 99.9%</text>
+
+        <text class="wrnp6dV" x="275" y="190" text-anchor="middle">37</text><text class="wrnp6dK" x="275" y="205" text-anchor="middle">sim 98.6%</text>
+        <text class="wrnp6dV" x="389" y="190" text-anchor="middle">46</text><text class="wrnp6dK" x="389" y="205" text-anchor="middle">sim 98.5%</text>
+        <text class="wrnp6dV" x="503" y="190" text-anchor="middle">46</text><text class="wrnp6dK" x="503" y="205" text-anchor="middle">sim 98.6%</text>
+        <text class="wrnp6dV" x="617" y="190" text-anchor="middle">46</text><text class="wrnp6dK" x="617" y="205" text-anchor="middle">sim 98.6%</text>
+        <text class="wrnp6dV" x="731" y="190" text-anchor="middle">46</text><text class="wrnp6dK" x="731" y="205" text-anchor="middle">sim 98.6%</text>
+
+        <text class="wrnp6dV" x="275" y="238" text-anchor="middle">32</text><text class="wrnp6dK" x="275" y="253" text-anchor="middle">sim 79.0%</text>
+        <text class="wrnp6dV" x="389" y="238" text-anchor="middle">44</text><text class="wrnp6dK" x="389" y="253" text-anchor="middle">sim 76.5%</text>
+        <text class="wrnp6dV" x="503" y="238" text-anchor="middle">44</text><text class="wrnp6dK" x="503" y="253" text-anchor="middle">sim 76.0%</text>
+        <text class="wrnp6dV" x="617" y="238" text-anchor="middle">44</text><text class="wrnp6dK" x="617" y="253" text-anchor="middle">sim 76.0%</text>
+        <text class="wrnp6dV" x="731" y="238" text-anchor="middle">44</text><text class="wrnp6dK" x="731" y="253" text-anchor="middle">sim 75.8%</text>
+
+        <text class="wrnp6dV" x="275" y="286" text-anchor="middle">25</text><text class="wrnp6dK" x="275" y="301" text-anchor="middle">sim 46.7%</text>
+        <text class="wrnp6dV" x="389" y="286" text-anchor="middle">19</text><text class="wrnp6dK" x="389" y="301" text-anchor="middle">sim 48.2%</text>
+        <text class="wrnp6dV" x="503" y="286" text-anchor="middle">19</text><text class="wrnp6dK" x="503" y="301" text-anchor="middle">sim 48.4%</text>
+        <text class="wrnp6dV" x="617" y="286" text-anchor="middle">19</text><text class="wrnp6dK" x="617" y="301" text-anchor="middle">sim 48.0%</text>
+        <text class="wrnp6dV" x="731" y="286" text-anchor="middle">19</text><text class="wrnp6dK" x="731" y="301" text-anchor="middle">sim 47.9%</text>
+
+        <text class="wrnp6dN" x="30" y="334">Read across a row: once the camera width is above zero, the column stops mattering. Read down any nonzero</text>
+        <text class="wrnp6dN" x="30" y="352">camera column: the score climbs to 46, holds, then falls, and the simulator's own score falls with it.</text>
+        <text class="wrnp6dN" x="30" y="370">Shade: white below 30, pale 30 to 39, pink 40 and up; marigold is the default setting.</text>
+        <text class="wrnp6dN" x="30" y="388">For comparison, twenty real demos on the bench reach 49 of 50 (practitioner session 10).</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the grid has a flat camera direction and a hump in the lighting direction; the hump is the cost of over-randomizing.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Record the baseline with nothing randomized</h4>
+        <p>In the Part 3 widget, set lighting to 0 and camera to 0. Write down real successes, simulator success and the gap. This is the number every later line is measured against.</p>
+        <div class="prompt-box good"><span class="label">Notebook line 1</span>Light 0, camera 0: real 29 of 50, simulator 100.0%, gap 42 points. Perfect in sim, a coin flip and a bit on the bench.</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Turn on one knob at a time</h4>
+        <p>Set lighting 0.2 with camera 0, then lighting 0 with camera 1.5. Which knob alone buys more on this bench? Read the scorecard: which condition improved?</p>
+        <div class="prompt-box good"><span class="label">Notebook line 2</span>Lighting 0.2 alone: 39 of 50. Camera 1.5 alone: 32 of 50. Each knob fixes a different distortion; neither is enough by itself.</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Find the smallest widths that reach the best score</h4>
+        <p>Turn both on at their smallest nonzero settings. Then check that the defaults (0.4 and 3 cm) give the same real score. Smaller widths mean less simulation spent on conditions far from the real cell.</p>
+        <div class="prompt-box good"><span class="label">Notebook line 3</span>Smallest widths reaching 46 of 50: lighting 0.2, camera 1.5 cm (simulator 99.9%). Defaults 0.4 and 3 cm also give 46 (simulator 98.6%).</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Widen the camera alone</h4>
+        <p>Keep lighting at 0.4 and step the camera through 1.5, 3, 6 and 12 cm. Write down what changes and give the reason in one sentence.</p>
+        <div class="prompt-box good"><span class="label">Notebook line 4</span>Lighting 0.4, camera 1.5 / 3 / 6 / 12 cm: 46 of 50 each time. A straight-line camera effect is learned as soon as it varies; more width adds nothing here.</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Over-randomize the lighting and record where it breaks</h4>
+        <p>Keep the camera at 3 cm and step lighting to 0.7, then 0.95. Watch both the real score and the simulator's own score. At 0.95, read which condition collapsed in the scorecard.</p>
+        <div class="prompt-box good"><span class="label">Notebook line 5</span>Lighting 0.7: 44 of 50, simulator about 76%. Lighting 0.95: 19 of 50, simulator about 48%, worse than no randomization (29). Breaks between 0.4 and 0.7; collapses by 0.95.</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Compare the best width with real demonstrations</h4>
+        <p>Open the bench in practitioner session 10 and read rung 4: the same 0.4 and 3 cm widths plus twenty real demonstrations. Write the comparison and what it says about the limit of randomization.</p>
+        <div class="prompt-box good"><span class="label">Notebook line 6</span>Best randomization alone: 46 of 50, with 17 of 21 at the bench edges. Plus 20 real demos (bench rung 4): 49 of 50. No width teaches the real lens; the simulator does not contain it.</div>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> A width sweep is an experiment with a notebook: the widths, the seed, real successes over trials, the simulator's score, and the condition that moved. A config file that says "lighting 0.95" with no record of why is how over-randomization ships.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">In Tobin et al.'s ablation (2017), which removed ingredient hurt most when distractors were present in the real scene?</p>
+      <button class="qopt" type="button">A · No camera randomization (2.4 cm)</button>
+      <button class="qopt" type="button">B · No distractors in training (7.2 cm)</button>
+      <button class="qopt" type="button">C · No image noise (1.9 cm)</button>
+      <p class="qwhy">Against the full method's 1.8 cm, dropping distractors from training raised error to 7.2 cm. On a clean table the same model was barely worse (1.5 against 1.3), which is why per-condition reporting matters.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">On Wrenfield's constructed bench, camera widths of 1.5, 3, 6 and 12 cm all give 46 of 50 at lighting 0.4. Why does widening the camera beyond any nonzero value stop mattering here?</p>
+      <button class="qopt" type="button">A · The camera never moves on the real bench</button>
+      <button class="qopt" type="button">B · Fifty trials are too few to see any camera effect</button>
+      <button class="qopt" type="button">C · The camera offset shifts the parcel and the fiducial equally, a straight-line effect, so any variation teaches the policy to subtract the fiducial</button>
+      <p class="qwhy">Once the simulator varies the camera at all, the regression sees the two readings move together and learns to cancel the offset. Width 0 gives 37 at lighting 0.4 because the policy never learned to subtract.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">At lighting 0.95 the simulator's own success falls to about 48 percent. Why does over-randomization lower simulator success too, not only real success?</p>
+      <button class="qopt" type="button">A · A straight-line policy fitted across almost-black to almost-double lighting cannot follow the curved lighting effect, so it is inaccurate across much of its own training range</button>
+      <button class="qopt" type="button">B · The simulator renders fewer episodes at wider widths</button>
+      <button class="qopt" type="button">C · The random seed changes when the width changes</button>
+      <p class="qwhy">The seed and episode count are fixed; only the widths change. A limited policy spread over a huge range spends its accuracy on the extremes and misses the middle, in simulation and on the real cell alike.</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">Before session 7</span>
+      <h2>Homework</h2>
+    </div>
+    <ol>
+      <li>Read the randomization section of Tobin et al. (2017), arXiv 1703.06907, and list every randomized setting with its range in a two-column table. Mark which ones the ablation tested and which it did not.</li>
+      <li>For a simulator you use or can read about, write the widths you would start with for lighting and camera pose, and the real measurement each width is centred on. If you cannot name the real measurement, that is the first thing to collect.</li>
+      <li>In the widget, find a cell where the real cell scores above the simulator. Write one sentence on why a gap can be negative, and why that is not good news by itself.</li>
+      <li>Write the experiment you would run to choose a lighting width on a real robot: the grid, the number of real trials per cell, and the rule for picking a winner. Practitioner session 7 will tell you whether your trial count can separate the cells.</li>
+    </ol>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Domain randomization</span><span class="note">Tobin et al. (2017), arXiv 1703.06907: randomized settings and ranges, 1.5 cm real localization, 38 of 40 grasps, simulated error 0.3 to 0.5 cm. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Which knobs mattered</span><span class="note">Tobin et al. (2017), Table II: no distractors 1.5 / 7.2 / 7.4 cm; no camera 2.0 / 2.4 / 2.9; no noise 1.4 / 1.9 / 2.4. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Over-randomization</span><span class="note">Mehta et al. (2019), "Active Domain Randomization", arXiv 1904.04762: uniform sampling and high-variance policies. Read at source (abstract). Taught as an open question.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The width grid</span><span class="note">Constructed Wrenfield bench, computed in the page with the engine, seed 1122, 50 trials; prose quotes only the grid's values.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Mixing in real demonstrations</span><span class="note">Named tonight (49 of 50 with 20 real demos). Practitioner session 10, the bench.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Small-trial evaluation</span><span class="note">Named tonight (intervals on 50 trials). Practitioner session 7.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Simulation miles against real miles</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-autonomous-driving-with-phoebe/">learn autonomous driving</a>.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>The idea.</strong> Vary the simulator until the real scene is one more draw; coverage, not realism.</div>
+      <div class="cheat-item"><strong>The source.</strong> Tobin et al. (2017): simulated images only, 1.5 cm real error, 38 of 40 grasps.</div>
+      <div class="cheat-item"><strong>The gap stays.</strong> Simulated error 0.3 to 0.5 cm against 1.5 cm real. Randomization shrinks it.</div>
+      <div class="cheat-item"><strong>The priority.</strong> Distractors critical (1.8 to 7.2 cm), camera a slight boost, noise negligible.</div>
+      <div class="cheat-item"><strong>Widths are hyperparameters.</strong> Centre them on a real measurement, log them, sweep them.</div>
+      <div class="cheat-item"><strong>The grid.</strong> 29 with nothing; 46 at 0.2 and 1.5 cm; 19 at 0.95 with the camera on (constructed).</div>
+      <div class="cheat-item"><strong>The anti-lever.</strong> Too wide lowers the simulator's own score too: capacity spent on conditions that never occur.</div>
+      <div class="cheat-item"><strong>The limit.</strong> No width teaches what the simulator lacks; 20 real demos reach 49 of 50 on the bench.</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>Evaluating a policy in 20 trials.</strong> Tonight's grid moved by one or two successes between cells. Next time: when a difference of that size is real, and when twenty trials simply cannot tell.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Practitioner session 6 of 10 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="p5-actions-as-data.html">← Prev: Actions as data</a>
+        <a href="p7-evaluating-a-policy-in-20-trials.html">Next: Evaluating a policy in 20 trials →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/pai-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  if (typeof PAI === "undefined") return;
+  var $ = function (id) { return document.getElementById(id); };
+  var wl = $("wrnp6-wl"), wc = $("wrnp6-wc");
+  var out = $("wrnp6-out"), card = $("wrnp6-card"), verdict = $("wrnp6-verdict"), self = $("wrnp6-self");
+  var OPTS = { seed: 1122, nTrials: 50 };
+
+  function pct(x, d) { return (100 * x).toFixed(d === undefined ? 1 : d) + "%"; }
+  function cell(c) {
+    if (!c[1]) return "none";
+    var w = PAI.wilson(c[0], c[1]);
+    return "<b>" + c[0] + " / " + c[1] + "</b><br><span class=\"wrnp6-ci\">" + pct(w.lo, 0) + " to " + pct(w.hi, 0) + "</span>";
+  }
+  function isDefault() { return wl.value === "0.4" && wc.value === "3"; }
+
+  function render() {
+    out.innerHTML = '<p class="sql-note">Training the policy on 400 simulated episodes in your browser...</p>';
+    setTimeout(function () {
+      var L = Number(wl.value), C = Number(wc.value);
+      var r = PAI.custom({ wL: L, wC: C }, OPTS);
+      var gap = 100 * r.gap;
+      var html = '<table class="sql-table"><thead><tr><th>Your widths</th><th>Simulator success</th><th>Real successes</th><th>Wilson 95%</th><th>Sim-to-real gap</th></tr></thead><tbody>';
+      html += "<tr class=\"wrnp6-you\"><td>Lighting " + wl.value + ", camera " + wc.value + " cm, no real demos</td><td>" + pct(r.sim) + "</td><td><b>" + r.real.k + " / " + r.real.n + "</b></td><td>" + pct(r.real.ci.lo) + " to " + pct(r.real.ci.hi) + "</td><td>" + gap.toFixed(1) + " points</td></tr>";
+      html += "</tbody></table>";
+      html += '<p class="sql-note">Same 50 constructed real trials for every setting, seed 1122. ' + (isDefault() ? "The default settings." : "Not the default settings: compare with the grid in the build-along.") + "</p>";
+      out.innerHTML = html;
+
+      var c = '<table class="sql-table"><thead><tr><th>Where the successes are</th><th>Dim light</th><th>Normal light</th><th>Centre</th><th>Edge</th></tr></thead><tbody>';
+      c += "<tr><td>Real successes, Wilson 95%</td><td>" + cell(r.real.dim) + "</td><td>" + cell(r.real.normal) + "</td><td>" + cell(r.real.centre) + "</td><td>" + cell(r.real.edge) + "</td></tr></tbody></table>";
+      card.innerHTML = c;
+
+      var msg = "Simulator " + pct(r.sim) + ", real " + r.real.k + " of " + r.real.n + ", gap " + gap.toFixed(1) + " points.";
+      if (C === 0 && L === 0) msg += " Nothing randomized: perfect in simulation, and every real distortion passes straight into the grasp.";
+      else if (C === 0) msg += " Lighting randomized, camera not: the policy never learned to subtract the fiducial, so the real camera's offset still lands in every grasp.";
+      if (L >= 0.95) msg += " Over-randomized lighting: a straight-line policy fitted across almost-black to almost-double lighting misses the ordinary middle (normal light " + r.real.normal[0] + " of " + r.real.normal[1] + "), and the simulator's own score falls with it.";
+      else if (L >= 0.7) msg += " Lighting this wide already costs the simulator its own accuracy; the real score is past its peak.";
+      if (gap < 0) msg += " A negative gap: the real cell scored above the simulator, because the simulator now spends many episodes in conditions harsher than the real cell. Not good news by itself.";
+      if (C > 0 && L > 0 && L < 0.7 && r.real.edge[0] < r.real.edge[1]) msg += " The remaining misses sit at the edges: the real lens magnifies by 8 percent and no simulator width contains it.";
+      verdict.textContent = msg;
+    }, 20);
+  }
+
+  [wl, wc].forEach(function (el) { el.addEventListener("change", render); });
+
+  var st = PAI.selfTestResult || PAI.selfTest();
+  self.textContent = st.pass
+    ? "The engine's " + st.checks.length + " self-checks pass in this browser. Synthetic: Wrenfield, its lighting curve, its lens and every trial are constructed; your numbers would differ on another seed or a real robot."
+    : "The engine's self-check did not pass in this browser, so nothing above should be believed.";
+  render();
+})();
+</script>
+<style>
+  #wrnp6-widths .sql-code { border: 1px solid var(--hairline); border-radius: 8px; max-width: 24rem; }
+  #wrnp6-widths table.sql-table { margin: .6rem 0 .2rem; font-size: .82rem; }
+  #wrnp6-widths tr.wrnp6-you td { background: var(--amber-50); }
+  #wrnp6-widths .wrnp6-ci { color: var(--muted); font-size: .76rem; }
+  #wrnp6-widths #wrnp6-out, #wrnp6-widths #wrnp6-card { overflow-x: auto; }
+</style>
+</body>
+</html>

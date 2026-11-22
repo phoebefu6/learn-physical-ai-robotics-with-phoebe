@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Practitioner session 4 of 10. Mixing data across robots: what embodiment changes, the coarse alignment that made 60 datasets from 22 robot embodiments trainable together, per-dataset normalisation, and why pooling helped small-data robots and hurt large-data ones. Normalise, pool and de-normalise two constructed datasets in numpy.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Mixing data across robots - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Practitioner session 4 of 10. The same action vector moves different robots differently. Coarse alignment, per-dataset normalisation, and a pooling result that helped the small and hurt the large.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/p4-mixing-data-across-robots.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Mixing data across robots - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="Embodiment, coarse alignment, per-dataset normalisation, and when pooling robot data helps or hurts.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Practitioner session 4 · Mixing data across robots - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Practitioner session 4 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Practitioner session 4 of 10</div>
+    <h1>Mixing data <span class="accent">across robots</span></h1>
+    <p class="sub">Every robot team eventually asks whether someone else's data can help. Tonight is about what has to be true before it can. A robot's body, its gripper, where its cameras sit and how it reads a command all change what one row of data means. You will see the coarse alignment a large research collaboration used to pool 60 datasets, the one step that keeps a borrowed dataset from drowning yours, and the honest result: pooling helped some robots and hurt others. Wrenfield Lab and all its numbers are constructed; the research numbers are real and cited.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Working depth</span>
+      <span class="chip audience">ML engineers pooling robot datasets</span>
+      <span class="chip audience">Data engineers building a shared robot data store</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:3">3-10 · Embodiment</span>
+      <span class="a3" style="flex:4">10-23 · Alignment and pooling</span>
+      <span class="a4" style="flex:6">23-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Wrenfield is offered a borrowed dataset</h2>
+    </div>
+    <p class="lede">Wrenfield Lab (constructed) has a few hundred parcel-pick episodes from its own two-arm robot. A partner team offers ten times more episodes from a different arm doing similar picks. The tempting move is to concatenate the tables and retrain. Tonight is about why that can quietly turn your robot into a worse copy of theirs, and the checks that decide whether pooling is a gift or a dilution.</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> A clear picture of embodiment: why the same action vector moves two robots differently. The coarse alignment recipe from the largest published pooling effort: a 7-dimensional end-effector action, one canonical camera view, per-dataset normalisation, and what it deliberately left unaligned. A live calculation of how badly an unnormalised dataset in centimetres dominates one in metres. The published disagreement on whether pooling helps. And a numpy script that normalises two constructed datasets, pools them, and de-normalises one prediction back to each robot.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why "more data" is not automatically better here<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>In a web or warehouse dataset, more rows of the same schema usually means a better estimate. Robot data from another robot has the same column names and a different meaning. The action column says "move 0.05 along x", but whose x, in what unit, measured from where, and is it a position or a speed? Pool without answering and the model learns an average of incompatible instructions.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>The Open X-Embodiment Collaboration (2023) pooled more than 1 million real robot trajectories: 60 datasets from 21 institutions, covering 22 robot embodiments and 527 skills (160,266 tasks). It is the largest published attempt to train one robot policy on many bodies, and the authors are unusually candid about what they could not reconcile. Most of tonight is built on what they wrote.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Words for tonight<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Embodiment.</strong> The robot's body as the data sees it: arm geometry, gripper, camera placement and control scheme.</li>
+          <li><strong>End-effector.</strong> The business end of the arm, usually the gripper. An end-effector action says where the gripper should go, not what each joint should do.</li>
+          <li><strong>Normalisation statistics.</strong> The per-dataset mean and standard deviation of each action dimension, stored next to the data so a prediction can be turned back into real units.</li>
+          <li><strong>Pooling.</strong> Training one model on several datasets at once.</li>
+          <li><strong>Underfitting.</strong> The model is too small or too constrained to fit what the data contains, so it does worse even on data it has seen plenty of.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers embodiment and why one action means many motions</span>
+      <h2>The same action vector, three different motions</h2>
+      <span class="tag concept">7 min live</span>
+    </div>
+    <p class="lede">Embodiment is four things the data inherits from the body that made it: the arm's geometry (link lengths, reach, joint limits), the gripper (two fingers, suction, width), where the cameras sit (on the wrist, overhead, to the side) and the control scheme (what a number in the action column instructs the controller to do). Change any one and the same numbers mean a different motion.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn: one action vector, plus 0.05 along x with the gripper closing, highlighted in marigold, sent to three constructed robots. Robot A, a long arm with a wrist camera, reads x as metres and moves 5 cm to the right. Robot B, a short arm with a camera overhead, logs centimetres and moves half a millimetre. Robot C, a mid-length arm with a side camera, has its x axis pointing another way and moves 5 cm sideways.">
+        <defs>
+          <filter id="wrnp4aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="41" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp4aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp4aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp4aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp4aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp4aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp4aK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp4aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <g filter="url(#wrnp4aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="200" y="30" width="480" height="50" rx="10" transform="rotate(-0.4 440 55)" fill="#F4B63C"/>
+          <path d="M300 82 L170 106 M440 82 L440 106 M580 82 L710 106" marker-end="url(#wrnp4aAr)"/>
+          <rect x="30" y="110" width="260" height="220" rx="8" transform="rotate(-0.5 160 220)" fill="#FFFFFF"/>
+          <rect x="310" y="110" width="260" height="220" rx="8" transform="rotate(0.4 440 220)" fill="#FFFFFF"/>
+          <rect x="590" y="110" width="260" height="220" rx="8" transform="rotate(-0.4 720 220)" fill="#FFFFFF"/>
+          <!-- robot A: long arm, wrist camera -->
+          <rect x="60" y="240" width="40" height="24" rx="3" fill="#FCEFF7"/>
+          <path d="M80 240 L120 172 L196 194"/>
+          <path d="M196 194 L196 214 M188 214 L204 214 M188 214 L188 226 M204 214 L204 226"/>
+          <rect x="176" y="174" width="16" height="10" rx="2" fill="#FCEFF7"/>
+          <path d="M214 232 L262 232" stroke="#9B0865" stroke-width="2.6" marker-end="url(#wrnp4aAr)"/>
+          <!-- robot B: short arm, overhead camera -->
+          <rect x="340" y="240" width="40" height="24" rx="3" fill="#FCEFF7"/>
+          <path d="M360 240 L384 204 L420 214"/>
+          <path d="M420 214 L420 230 M413 230 L427 230 M413 230 L413 240 M427 230 L427 240"/>
+          <rect x="452" y="150" width="22" height="14" rx="2" fill="#FCEFF7"/>
+          <path d="M458 166 L428 206 M468 166 L476 206" stroke-dasharray="4 4"/>
+          <path d="M434 248 L442 248" stroke="#9B0865" stroke-width="2.6" marker-end="url(#wrnp4aAr)"/>
+          <!-- robot C: mid arm, side camera, rotated frame -->
+          <rect x="620" y="240" width="40" height="24" rx="3" fill="#FCEFF7"/>
+          <path d="M640 240 L670 190 L734 204"/>
+          <path d="M734 204 L734 222 M726 222 L742 222 M726 222 L726 234 M742 222 L742 234"/>
+          <rect x="812" y="196" width="22" height="14" rx="2" fill="#FCEFF7"/>
+          <path d="M810 200 L760 192 M810 206 L760 222" stroke-dasharray="4 4"/>
+          <path d="M752 244 L784 214" stroke="#9B0865" stroke-width="2.6" marker-end="url(#wrnp4aAr)"/>
+        </g>
+
+        <text class="wrnp4aL" x="440" y="52" text-anchor="middle">Same action vector: +0.05 along x, close gripper</text>
+        <text class="wrnp4aK" x="440" y="70" text-anchor="middle">(x, y, z, roll, pitch, yaw, grip) = (0.05, 0, 0, 0, 0, 0, close)</text>
+
+        <text class="wrnp4aL" x="46" y="134">Robot A · long arm, wrist camera</text>
+        <text class="wrnp4aL" x="326" y="134">Robot B · short arm, top camera</text>
+        <text class="wrnp4aL" x="606" y="134">Robot C · mid arm, side camera</text>
+
+        <text class="wrnp4aS" x="46" y="292">reads x as metres</text>
+        <text class="wrnp4aS" x="46" y="310">moves 5 cm to the right</text>
+        <text class="wrnp4aS" x="326" y="292">logs centimetres</text>
+        <text class="wrnp4aS" x="326" y="310">moves 0.5 mm: barely a twitch</text>
+        <text class="wrnp4aS" x="606" y="292">its x axis points another way</text>
+        <text class="wrnp4aS" x="606" y="310">moves 5 cm sideways</text>
+
+        <text class="wrnp4aN" x="30" y="358">Three constructed robots. The berry arrow is the motion each one makes from identical numbers.</text>
+        <text class="wrnp4aN" x="30" y="378">Units, axis direction and reach all live in the body, not in the action column.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold vector is identical in all three datasets; the motion it caused is not, so a model pooled on all three learns an average of three meanings.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The authors' own words<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The clearest statement of the problem comes from the people who pooled the most data. Writing about their own coarse alignment, the Open X-Embodiment Collaboration (2023) warn that "the same action vector may induce very different motions for different robots". They pooled anyway, with eyes open, and measured what happened. That is the professional stance: a known mismatch is a risk you measure, not a reason to pretend the columns agree.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>The pooled collection spans 22 robot embodiments: different arm geometries, grippers, camera placements and control schemes, gathered across 21 institutions. Each of the 60 datasets was recorded by a team optimising for its own robot, not for anyone pooling it later.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The four parts of embodiment, as data columns<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Arm geometry.</strong> Decides which positions are reachable. A target one arm reaches easily may be outside another's workspace, so the same demonstration cannot be replayed.</li>
+          <li><strong>Gripper.</strong> Decides what "close" means: a width, a force, a binary flag. Store it with its unit.</li>
+          <li><strong>Camera placement.</strong> Decides what the policy sees. A wrist camera moves with the arm; a fixed one does not. Practitioner session 2 covers what one camera move does to every episode after it.</li>
+          <li><strong>Control scheme.</strong> Decides what a number in the action column instructs: a position, a change in position, or a speed. Practitioner session 5 goes deep on this.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>What a borrowed dataset must ship with<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Before you accept another team's episodes, ask for the embodiment as metadata, not as a paragraph in an email: robot and gripper, camera poses and which one is the canonical view, action space and unit, whether actions are absolute or relative, control frequency, and the normalisation statistics if they already trained on it. The identity bundle from practitioner session 1 is the template. If they cannot answer, the dataset is a research curiosity, not a training input.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers coarse alignment and per-dataset normalisation</span>
+      <h2>Coarse alignment: what was made common, and what was not</h2>
+      <span class="tag concept">8 min live</span>
+    </div>
+    <p class="lede">The pooling recipe is deliberately coarse. Every dataset's action becomes a 7-dimensional end-effector action: x, y, z, roll, pitch, yaw and gripper. Every dataset contributes one canonical camera view, resized to a common resolution. Each dataset's actions are normalised with its own statistics before training, and the model's outputs are de-normalised per embodiment on the way out. What is not aligned matters as much: coordinate frames, camera poses, and whether actions are positions or velocities.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn pipeline. Dataset A and dataset B flow into three steps: one canonical camera view resized; a 7-dimensional end-effector action; per-dataset normalisation, highlighted in marigold. Then one model, whose output is de-normalised separately for robot A and robot B. A dashed box notes what the alignment leaves alone: coordinate frames are not aligned and actions may be absolute or relative positions, or velocities.">
+        <defs>
+          <filter id="wrnp4bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="43" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp4bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp4bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp4bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp4bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp4bK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp4bW { font: 800 12px Inter, sans-serif; fill: #FFFFFF; }
+          .wrnp4bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <g filter="url(#wrnp4bSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="40" width="150" height="50" rx="8" transform="rotate(-0.5 105 65)" fill="url(#wrnp4bHc)"/>
+          <rect x="30" y="110" width="150" height="50" rx="8" transform="rotate(0.5 105 135)" fill="url(#wrnp4bHc)"/>
+          <path d="M182 66 L216 90 M182 134 L216 112" marker-end="url(#wrnp4bAr)"/>
+          <rect x="220" y="60" width="140" height="80" rx="8" transform="rotate(0.4 290 100)" fill="#FFFFFF"/>
+          <path d="M362 100 L376 100" marker-end="url(#wrnp4bAr)"/>
+          <rect x="380" y="60" width="140" height="80" rx="8" transform="rotate(-0.4 450 100)" fill="#FFFFFF"/>
+          <path d="M522 100 L536 100" marker-end="url(#wrnp4bAr)"/>
+          <rect x="540" y="60" width="140" height="80" rx="8" transform="rotate(0.5 610 100)" fill="#F4B63C"/>
+          <path d="M682 100 L696 100" marker-end="url(#wrnp4bAr)"/>
+          <rect x="700" y="60" width="150" height="80" rx="10" fill="#9B0865"/>
+          <path d="M730 142 L640 194 M800 142 L800 194" marker-end="url(#wrnp4bAr)"/>
+          <rect x="545" y="198" width="140" height="50" rx="8" transform="rotate(-0.4 615 223)" fill="#FCEFF7"/>
+          <rect x="710" y="198" width="140" height="50" rx="8" transform="rotate(0.4 780 223)" fill="#FCEFF7"/>
+          <rect x="30" y="190" width="480" height="74" rx="8" stroke-dasharray="6 5" fill="#FFFFFF"/>
+          <!-- doodle: a camera on the canonical-view step -->
+          <path d="M330 72 L348 72 L348 84 L330 84 Z M348 76 L356 72 L356 84 L348 80"/>
+        </g>
+
+        <text class="wrnp4bL" x="46" y="70">Dataset A</text>
+        <text class="wrnp4bK" x="46" y="84">m, wrist camera</text>
+        <text class="wrnp4bL" x="46" y="140">Dataset B</text>
+        <text class="wrnp4bK" x="46" y="154">cm, two cameras</text>
+
+        <text class="wrnp4bL" x="234" y="104">One canonical</text>
+        <text class="wrnp4bL" x="234" y="120">camera view</text>
+        <text class="wrnp4bS" x="234" y="134">resized, one size</text>
+        <text class="wrnp4bL" x="394" y="84">7-D action</text>
+        <text class="wrnp4bS" x="394" y="102">x, y, z, roll,</text>
+        <text class="wrnp4bS" x="394" y="117">pitch, yaw,</text>
+        <text class="wrnp4bS" x="394" y="132">gripper</text>
+        <text class="wrnp4bL" x="554" y="88">Normalise per</text>
+        <text class="wrnp4bL" x="554" y="104">dataset</text>
+        <text class="wrnp4bK" x="554" y="124">own mean and std</text>
+        <text class="wrnp4bW" x="775" y="96" text-anchor="middle">One model</text>
+        <text class="wrnp4bW" x="775" y="114" text-anchor="middle">all datasets</text>
+
+        <text class="wrnp4bL" x="559" y="220">De-normalise</text>
+        <text class="wrnp4bS" x="559" y="238">with A's stats</text>
+        <text class="wrnp4bL" x="724" y="220">De-normalise</text>
+        <text class="wrnp4bS" x="724" y="238">with B's stats</text>
+
+        <text class="wrnp4bL" x="46" y="214">What the alignment leaves alone</text>
+        <text class="wrnp4bS" x="46" y="234">Frames are not aligned across datasets; camera views still vary.</text>
+        <text class="wrnp4bS" x="46" y="252">Actions may be absolute or relative positions, or velocities.</text>
+
+        <text class="wrnp4bN" x="30" y="292">Recipe as described by the Open X-Embodiment Collaboration (2023). Dataset labels are constructed examples.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold step is the one that keeps the larger-numbered dataset from owning the loss; the dashed box is what pooling still has to live with.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why normalise per dataset, not once for the pool<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A squared-error loss charges for the size of the mistake in the units of the data. If one dataset logs end-effector steps in metres (a typical step of 0.004) and another logs centimetres (a typical step of 0.4), the second dataset's errors are a hundred times larger in raw numbers and ten thousand times larger once squared. The optimiser spends almost all its effort on the centimetre dataset. Normalising the pool as a whole does not fix it, because the pooled mean and spread are still set by the larger numbers. Normalising each dataset with its own mean and standard deviation puts every dataset on the same scale, and keeping those statistics lets you turn a prediction back into each robot's units.</p>
+      </div>
+    </details>
+
+    <div class="wk" id="wrnp4-norm">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">Computed in this page on constructed numbers: six Wrenfield end-effector steps in metres (typical step 0.004) and six borrowed steps in centimetres (typical step 0.4). Toggle per-dataset normalisation and change how much more borrowed data there is.</span>
+      </div>
+      <div class="wk-body">
+        <label class="sql-label" for="wrnp4-normon"><input type="checkbox" id="wrnp4-normon"> Per-dataset normalisation (each dataset's own mean and std)</label>
+        <label class="sql-label" for="wrnp4-size">Borrowed data relative to Wrenfield's</label>
+        <select class="sql-code" id="wrnp4-size">
+          <option value="1" selected>1x, the same number of steps</option>
+          <option value="5">5x</option>
+          <option value="10">10x, the offer on the table</option>
+        </select>
+        <div id="wrnp4-out"></div>
+        <p class="sql-note" id="wrnp4-verdict">...</p>
+      </div>
+      <div class="wk-foot">Constructed steps, one axis only, so the arithmetic is visible. "Share of the loss" assumes the model's errors are proportional to the size of the targets, a simplification; a real training run will differ. The point it shows is the ratio, not a training result.</div>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Three runs worth doing in the calculator<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>The default.</strong> Normalisation off, equal sizes: the borrowed dataset's mean squared step is about 10989 times Wrenfield's and takes 99.99 percent of the loss. Wrenfield's own data is effectively invisible to the optimiser.</li>
+          <li><strong>Turn normalisation on.</strong> The ratio drops to 1 and each dataset carries half the loss. Same data, a fair hearing.</li>
+          <li><strong>Now pick 10x with normalisation on.</strong> Scale is fixed, but the borrowed data still outnumbers yours and still takes most of the loss. Normalisation fixes units, not proportions. Sampling weights per dataset are the separate decision Part 3 sets up.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Real world: what the authors chose not to align<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>The Open X-Embodiment Collaboration (2023) state that camera observations "still vary substantially" across datasets, in camera pose and properties, and that "we do not align the coordinate frames across datasets". Actions may be absolute or relative positions or velocities. Their argument is that a large enough model can learn some of these differences from the data itself. Whether that holds for your model size is exactly what Part 3 tests.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Store the statistics like a schema<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Normalisation statistics are part of the model, not a training detail. Version them with the dataset they came from, store them next to the checkpoint, and refuse to deploy a checkpoint whose statistics file is missing. A policy whose output is de-normalised with another dataset's statistics will move with confidence and the wrong scale, and nothing in the loss curve will have warned you.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers whether pooling helps, and the other route</span>
+      <h2>Pooling helped the small and hurt the large</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">The honest answer to "does pooling help?" is "for whom?". The same paper that pooled 60 datasets reports both outcomes, and a second large collection took the opposite approach entirely. Teach both; the literature has not settled which route wins.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 370" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn schematic bars, no measured heights. Left: a small-data robot, own data only versus pooled; pooled is higher, labelled with the reported 50 percent higher mean success across small-data domains. Right: a large-data robot, own data only versus pooled; pooled is lower, highlighted in marigold, labelled underfits and performs worse. A small and a large data cylinder mark how much own data each robot had.">
+        <defs>
+          <filter id="wrnp4cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="47" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp4cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp4cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp4cH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp4cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp4cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp4cA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp4cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <g filter="url(#wrnp4cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="40" width="390" height="270" rx="8" transform="rotate(-0.4 225 175)" fill="#FFFFFF"/>
+          <rect x="460" y="40" width="390" height="270" rx="8" transform="rotate(0.4 655 175)" fill="#FFFFFF"/>
+          <path d="M70 230 L390 230 M500 230 L820 230"/>
+          <rect x="100" y="170" width="60" height="60" rx="3" fill="#FFFFFF"/>
+          <rect x="190" y="140" width="60" height="90" rx="3" fill="url(#wrnp4cHc)"/>
+          <rect x="530" y="100" width="60" height="130" rx="3" fill="#FFFFFF"/>
+          <rect x="620" y="135" width="60" height="95" rx="3" fill="#F4B63C"/>
+          <!-- doodle: data cylinders, small and large -->
+          <path d="M320 180 L320 214 M360 180 L360 214"/>
+          <ellipse cx="340" cy="180" rx="20" ry="6"/>
+          <path d="M320 214 Q340 226 360 214"/>
+          <path d="M740 110 L740 214 M790 110 L790 214"/>
+          <ellipse cx="765" cy="110" rx="25" ry="7"/>
+          <path d="M740 214 Q765 228 790 214"/>
+        </g>
+
+        <text class="wrnp4cH" x="46" y="66">A ROBOT WITH LITTLE OWN DATA</text>
+        <text class="wrnp4cH" x="476" y="66">A ROBOT WITH A LARGE OWN DATASET</text>
+
+        <text class="wrnp4cA" x="220" y="130" text-anchor="middle">higher</text>
+        <text class="wrnp4cA" x="650" y="125" text-anchor="middle">lower</text>
+
+        <text class="wrnp4cS" x="130" y="248" text-anchor="middle">own data</text>
+        <text class="wrnp4cS" x="220" y="248" text-anchor="middle">pooled</text>
+        <text class="wrnp4cS" x="340" y="248" text-anchor="middle">small</text>
+        <text class="wrnp4cS" x="560" y="248" text-anchor="middle">own data</text>
+        <text class="wrnp4cS" x="650" y="248" text-anchor="middle">pooled</text>
+        <text class="wrnp4cS" x="765" y="248" text-anchor="middle">large</text>
+
+        <text class="wrnp4cL" x="46" y="274">RT-1-X: mean success 50 percent higher</text>
+        <text class="wrnp4cS" x="46" y="292">than the original methods, on small-data domains</text>
+        <text class="wrnp4cL" x="476" y="274">RT-1-X underfits and performs worse</text>
+        <text class="wrnp4cS" x="476" y="292">than the original methods, on large-scale datasets</text>
+
+        <text class="wrnp4cN" x="30" y="336">Bar heights are schematic, not measured. The larger RT-2-X showed about 3x on emergent skills.</text>
+        <text class="wrnp4cN" x="30" y="354">Results as reported by the Open X-Embodiment Collaboration (2023).</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold bar is the result most pooling pitches leave out: with a model that is too small, the robot that already had plenty of data got worse.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Read both halves of the result<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>On domains with little data of their own, the pooled model RT-1-X had a mean success rate 50 percent higher than the original method trained on each dataset alone. On the large-scale datasets, the same model underfit and performed worse than the originals. The authors' reading is capacity: a model of that size cannot fit 22 embodiments' worth of variety, so the robot with plenty of its own data pays for everyone else's. The larger RT-2-X showed about 3x on emergent skills, which is the case for scaling the model with the pool.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>DROID (Khazatsky et al. 2024) took the other route. Rather than pooling different bodies, it replicated the same hardware setup 18 times and had 50 collectors gather 76k demonstration trajectories across 564 scenes. Embodiment was held constant so that the variety went into scenes, objects and lighting instead. Neither paper settles which strategy is better in general; they answer different questions.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Questions to ask before pooling<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Frames.</strong> Which coordinate frame is each dataset's action in, and does +x point the same way? If not, what will the model learn from the disagreement?</li>
+          <li><strong>Action type.</strong> Absolute position, relative position or velocity? Mixing them without a flag is mixing labels.</li>
+          <li><strong>Camera.</strong> Which view is canonical for each dataset, and does it show the gripper?</li>
+          <li><strong>Normalisation statistics.</strong> Computed per dataset, versioned, and shipped with the checkpoint?</li>
+          <li><strong>Per-robot evaluation.</strong> Is success reported separately for each robot, including the one with the most data? A pooled average can hide a robot that got worse. Practitioner session 7 covers how few trials that comparison can rest on.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>What Wrenfield should do with the offer<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Wrenfield (constructed) has little data of its own, which is the side of the result where pooling helped. That is a reason to try, not a reason to trust. Train two policies, one on Wrenfield's data alone and one pooled with per-dataset normalisation, evaluate both on Wrenfield's robot under the same initial conditions, and keep the pooled one only if it wins there. If the partner's robot is also evaluated, report it separately. The decision rule is written before the trials, not after.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ BUILD-ALONG ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Normalise, pool and de-normalise in numpy</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Python 3.10 or later with numpy. You build two constructed datasets of end-effector steps, one in metres and one in centimetres, measure how unequal they are, compute each one's mean and standard deviation, normalise and pool them, and then take one model output and turn it back into each robot's units. The figure shows the statistics you store and the round trip they make possible.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn stats table, highlighted in marigold: Wrenfield x mean 0.0012 and std 0.004 in metres; borrowed x mean 0.0879 and std 0.38 in centimetres. An arrow carries the stats to one normalised model output, z equals 0.5, which de-normalises to 0.0032 metres for Wrenfield and 0.278 centimetres for the borrowed robot.">
+        <defs>
+          <filter id="wrnp4dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="53" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp4dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp4dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp4dH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp4dL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp4dS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp4dK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp4dW { font: 800 16px Inter, sans-serif; fill: #FFFFFF; }
+          .wrnp4dN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp4dH" x="30" y="34">STORED PER DATASET, NEXT TO THE DATA</text>
+
+        <g filter="url(#wrnp4dSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="48" width="420" height="132" rx="8" transform="rotate(-0.3 240 114)" fill="#F4B63C"/>
+          <path d="M42 90 L438 90"/>
+          <path d="M452 114 L516 114" marker-end="url(#wrnp4dAr)"/>
+          <rect x="520" y="96" width="120" height="44" rx="10" fill="#9B0865"/>
+          <path d="M642 108 L690 76 M642 128 L690 160" marker-end="url(#wrnp4dAr)"/>
+          <rect x="694" y="50" width="160" height="48" rx="8" transform="rotate(0.4 774 74)" fill="#FFFFFF"/>
+          <rect x="694" y="140" width="160" height="48" rx="8" transform="rotate(-0.4 774 164)" fill="#FFFFFF"/>
+          <!-- doodle: a small gripper beside the outputs -->
+          <path d="M860 214 L860 200 M850 200 L870 200 M850 200 L850 214 M870 200 L870 214" stroke="#B5338B" stroke-width="2.5"/>
+        </g>
+
+        <text class="wrnp4dL" x="46" y="76">dataset</text>
+        <text class="wrnp4dL" x="190" y="76">mean x</text>
+        <text class="wrnp4dL" x="290" y="76">std x</text>
+        <text class="wrnp4dL" x="380" y="76">unit</text>
+        <text class="wrnp4dK" x="46" y="120">wrenfield</text>
+        <text class="wrnp4dK" x="190" y="120">0.0012</text>
+        <text class="wrnp4dK" x="290" y="120">0.004</text>
+        <text class="wrnp4dK" x="380" y="120">m</text>
+        <text class="wrnp4dK" x="46" y="156">borrowed</text>
+        <text class="wrnp4dK" x="190" y="156">0.0879</text>
+        <text class="wrnp4dK" x="290" y="156">0.38</text>
+        <text class="wrnp4dK" x="380" y="156">cm</text>
+
+        <text class="wrnp4dS" x="580" y="88" text-anchor="middle">model output</text>
+        <text class="wrnp4dW" x="580" y="124" text-anchor="middle">z = 0.5</text>
+
+        <text class="wrnp4dL" x="774" y="72" text-anchor="middle">Wrenfield 0.0032 m</text>
+        <text class="wrnp4dS" x="774" y="88" text-anchor="middle">z x std + mean</text>
+        <text class="wrnp4dL" x="774" y="162" text-anchor="middle">Borrowed 0.278 cm</text>
+        <text class="wrnp4dS" x="774" y="178" text-anchor="middle">z x std + mean</text>
+
+        <text class="wrnp4dN" x="30" y="214">Values printed by the script below (x axis only). Constructed data, seed 4.</text>
+        <text class="wrnp4dN" x="30" y="234">Lose the stats file and the model's output has no unit: it is a number, not a motion.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold table is as much a part of the model as its weights: the same z means a different step for each robot.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Build two constructed datasets in different units</h4>
+        <p>Four hundred end-effector steps each, three axes. Wrenfield logs metres with a typical step of 0.004; the borrowed set logs centimetres with a typical step of 0.4. Physically they are the same size of motion; numerically they are a hundred times apart.</p>
+        <div class="prompt-box good"><span class="label">pool.py, part 1</span>import numpy as np
+
+rng = np.random.default_rng(4)                     # constructed Wrenfield data
+# 400 end-effector steps (x, y, z) from each source
+wren = rng.normal(0.001, 0.004, size=(400, 3))     # Wrenfield logs metres
+borrowed = rng.normal(0.1, 0.4, size=(400, 3))     # borrowed set logs centimetres</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Measure the imbalance, then the statistics</h4>
+        <p>The mean squared step is what a squared-error loss is proportional to. Print the ratio, then each dataset's per-axis mean and standard deviation.</p>
+        <div class="prompt-box good"><span class="label">pool.py, part 2</span>def msq(a):
+    return float((a ** 2).sum(axis=1).mean())      # mean squared step size
+
+print("raw msq ratio, borrowed / wrenfield:", round(msq(borrowed) / msq(wren)))
+
+stats = {}
+for name, a in [("wrenfield", wren), ("borrowed", borrowed)]:
+    stats[name] = (a.mean(axis=0), a.std(axis=0))
+    print(name, "mean", np.round(stats[name][0], 4), "std", np.round(stats[name][1], 4))</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Normalise each dataset with its own statistics, then pool</h4>
+        <p>Subtract the dataset's own mean and divide by its own standard deviation. After this, both datasets have the same scale and the pool's spread is 1 on every axis.</p>
+        <div class="prompt-box good"><span class="label">pool.py, part 3</span>norm = {name: (a - stats[name][0]) / stats[name][1]
+        for name, a in [("wrenfield", wren), ("borrowed", borrowed)]}
+print("normalised msq ratio:", round(msq(norm["borrowed"]) / msq(norm["wrenfield"]), 3))
+pooled = np.vstack([norm["wrenfield"], norm["borrowed"]])
+print("pooled shape:", pooled.shape, "pooled std:", np.round(pooled.std(axis=0), 3))</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>De-normalise one prediction back to each robot</h4>
+        <p>Pretend the model output one normalised step. Multiply by each robot's own standard deviation and add its own mean. Then confirm the round trip on real data is exact.</p>
+        <div class="prompt-box good"><span class="label">pool.py, part 4</span>z = np.array([0.5, -1.0, 0.2])                     # one model output, normalised units
+for name, (m, s) in stats.items():
+    print(name, "step:", np.round(z * s + m, 4))
+
+back = norm["wrenfield"] * stats["wrenfield"][1] + stats["wrenfield"][0]
+print("round trip exact:", np.allclose(back, wren))</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Run it and read the output</h4>
+        <p>Run <code>python3 pool.py</code> from a scratch folder. The output below is what the script printed when this page was written, with numpy's seeded generator; a different numpy version may print slightly different means.</p>
+        <div class="prompt-box good"><span class="label">Expected output</span>raw msq ratio, borrowed / wrenfield: 8940
+wrenfield mean [0.0012 0.001  0.0006] std [0.004  0.0042 0.004 ]
+borrowed mean [0.0879 0.1023 0.1256] std [0.38   0.396  0.3763]
+normalised msq ratio: 1.0
+pooled shape: (800, 3) pooled std: [1. 1. 1.]
+wrenfield step: [ 0.0032 -0.0032  0.0015]
+borrowed step: [ 0.278  -0.2937  0.2008]
+round trip exact: True</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Extend it: break it on purpose</h4>
+        <p>De-normalise the Wrenfield prediction with the borrowed dataset's statistics instead of its own, and print the result in metres. That number is the step the robot would take if the wrong statistics file shipped with the checkpoint. Then save <code>stats</code> to a JSON file named after the dataset version.</p>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> The 8940 is the warning: two datasets describing the same size of motion differed by nearly four orders of magnitude in what a loss would see. Compute the ratio before you pool, normalise per dataset, and ship the statistics with the model.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">Why normalise each dataset with its own statistics rather than pooling raw actions?</p>
+      <button class="qopt" type="button">A · To make the files smaller</button>
+      <button class="qopt" type="button">B · Because normalisation aligns the coordinate frames across robots</button>
+      <button class="qopt" type="button">C · Because a dataset logged in larger units would dominate a squared-error loss, and the per-dataset statistics are needed to de-normalise predictions back to each robot</button>
+      <p class="qwhy">Scale, not meaning: normalisation puts every dataset on the same footing for the loss and makes the round trip back to real units possible. It does nothing about frames.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">The pooling authors state that they "do not align the coordinate frames across datasets". What does that risk?</p>
+      <button class="qopt" type="button">A · The same action numbers can mean motion in different directions on different robots, so the model learns a blend of conflicting instructions</button>
+      <button class="qopt" type="button">B · Nothing, because normalisation already handles it</button>
+      <button class="qopt" type="button">C · Only that images will be a different resolution</button>
+      <p class="qwhy">"+x" on one robot may point where "+y" points on another. Normalisation rescales each axis; it cannot rotate one robot's frame into another's.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">What did the Open X-Embodiment Collaboration (2023) report for RT-1-X?</p>
+      <button class="qopt" type="button">A · It improved every robot, so pooling is always worth it</button>
+      <button class="qopt" type="button">B · Mean success 50 percent higher on small-data domains, but on large-scale datasets it underfit and performed worse than the original methods</button>
+      <button class="qopt" type="button">C · It performed worse everywhere, so pooling never helps</button>
+      <p class="qwhy">Both halves are in the same paper. Pooling helped robots with little data and hurt those with plenty, at that model size. Evaluate per robot before you trust a pooled average.</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">Before session 5</span>
+      <h2>Homework</h2>
+    </div>
+    <ol>
+      <li>Add a third constructed dataset to <code>pool.py</code> that logs velocities in metres per second, and write down why normalising it does not make it compatible with the other two.</li>
+      <li>Add per-dataset sampling weights so each dataset contributes the same number of steps per batch, and print each dataset's share of a pooled batch.</li>
+      <li>Write the embodiment metadata (robot, gripper, cameras, action space and unit, absolute or relative, control rate) for one dataset you know, robot or not.</li>
+      <li>Read the action section of one public robot dataset's documentation and note whether its actions are absolute or relative. Practitioner session 5 starts there.</li>
+    </ol>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Embodiment and coarse alignment</span><span class="note">Open X-Embodiment Collaboration (2023), arXiv 2310.08864: 1M+ trajectories, 22 embodiments, 21 institutions, 60 datasets, 527 skills (160,266 tasks); 7-D action, canonical view, per-dataset normalisation; frames not aligned. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Does pooling help?</span><span class="note">Same paper: RT-1-X 50 percent higher on small-data domains, underfits on large-scale datasets; RT-2-X about 3x on emergent skills. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The other route: one replicated setup</span><span class="note">Khazatsky et al. (2024), DROID, arXiv 2403.12945: same hardware replicated 18 times, 50 collectors, 76k trajectories, 564 scenes. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Per-dataset normalisation round trip</span><span class="note">Constructed Wrenfield data; the widget computes in the page and the build-along output was run and copied.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Actions as data</span><span class="note">Absolute or relative, joint or end-effector, named tonight. Practitioner session 5.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Coordinate frames</span><span class="note">Why unaligned frames matter, named tonight. Practitioner session 2.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Vision models for the canonical view</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-computer-vision-with-phoebe/">learn computer vision</a>.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>Embodiment.</strong> Arm geometry, gripper, camera placement, control scheme.</div>
+      <div class="cheat-item"><strong>The warning.</strong> The same action vector can move different robots very differently.</div>
+      <div class="cheat-item"><strong>Coarse alignment.</strong> 7-D end-effector action, one canonical view, resized.</div>
+      <div class="cheat-item"><strong>Normalise per dataset.</strong> Own mean and std; de-normalise per robot on the way out.</div>
+      <div class="cheat-item"><strong>Not aligned.</strong> Coordinate frames, camera poses, absolute vs relative vs velocity.</div>
+      <div class="cheat-item"><strong>Units vs proportions.</strong> Normalisation fixes scale; sampling weights fix dataset size.</div>
+      <div class="cheat-item"><strong>The result.</strong> Pooling helped small-data robots and hurt large-data ones at that model size.</div>
+      <div class="cheat-item"><strong>Evaluate per robot.</strong> A pooled average can hide the robot that got worse.</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>Actions as data.</strong> Absolute or delta, joint or end-effector, the statistics each one needs, and why predicting a chunk of actions at once changed the result.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Practitioner session 4 of 10 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="p3-teleop-data-quality.html">← Prev: Teleop data quality</a>
+        <a href="p5-actions-as-data.html">Next: Actions as data →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  // Constructed steps along one axis. Wrenfield logs metres, the borrowed set logs centimetres.
+  var WREN = [0.004, -0.003, 0.005, 0.004, -0.004, 0.003];
+  var BORR = [0.4, -0.5, 0.3, 0.4, -0.3, 0.5];
+  var on = document.getElementById("wrnp4-normon");
+  var size = document.getElementById("wrnp4-size");
+  var out = document.getElementById("wrnp4-out");
+  var verdict = document.getElementById("wrnp4-verdict");
+  if (!on || !size || !out) return;
+  function mean(a) { return a.reduce(function (s, x) { return s + x; }, 0) / a.length; }
+  function std(a) { var m = mean(a); return Math.sqrt(mean(a.map(function (x) { return (x - m) * (x - m); }))); }
+  function msq(a) { return mean(a.map(function (x) { return x * x; })); }
+  function zs(a) { var m = mean(a), s = std(a); return a.map(function (x) { return (x - m) / s; }); }
+  function fmt(x) { return Math.abs(x) >= 100 ? x.toFixed(0) : (Math.abs(x) >= 0.01 ? x.toFixed(2) : x.toExponential(2)); }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function render() {
+    var norm = on.checked, k = Number(size.value);
+    var w = norm ? zs(WREN) : WREN, b = norm ? zs(BORR) : BORR;
+    var pool = w.slice();
+    for (var i = 0; i < k; i++) pool = pool.concat(b);
+    var lw = w.length * msq(w), lb = k * b.length * msq(b);
+    var shareB = lb / (lw + lb), ratio = msq(b) / msq(w);
+    var rows = [
+      ["Wrenfield", norm ? "normalised" : "metres", w.length, fmt(Math.sqrt(msq(w))), (100 * (1 - shareB)).toFixed(2) + "%"],
+      ["Borrowed", norm ? "normalised" : "centimetres", k * b.length, fmt(Math.sqrt(msq(b))), (100 * shareB).toFixed(2) + "%"]
+    ];
+    var html = '<div class="sql-tablewrap"><table class="sql-table"><thead><tr><th>Dataset</th><th>Units</th><th>Steps</th><th>Typical step (RMS)</th><th>Share of the loss</th></tr></thead><tbody>';
+    rows.forEach(function (r) { html += "<tr>" + r.map(function (c) { return "<td>" + esc(c) + "</td>"; }).join("") + "</tr>"; });
+    html += "</tbody></table></div>";
+    html += '<p class="sql-note">Mean squared step, borrowed / Wrenfield: <b>' + esc(fmt(ratio)) + "</b> · pooled action scale (RMS of all " + pool.length + " steps): <b>" + esc(fmt(Math.sqrt(msq(pool)))) + "</b></p>";
+    out.innerHTML = html;
+    var even = Math.abs(shareB - 0.5) < 1e-9;
+    var lead = shareB > 0.5 ? "The borrowed dataset" : "Wrenfield";
+    verdict.textContent = (even ? "Neither dataset dominates: each carries half the loss." :
+      lead + " dominates the loss with " + (100 * Math.max(shareB, 1 - shareB)).toFixed(2) + "%" +
+      (norm ? ", now because of its size, not its units." : ", because its numbers are in bigger units."));
+  }
+  on.addEventListener("change", render);
+  size.addEventListener("change", render);
+  render();
+})();
+</script>
+<style>
+  #wrnp4-norm .sql-code { border: 1px solid var(--hairline); border-radius: 8px; max-width: 24rem; }
+  #wrnp4-norm .sql-label input { accent-color: var(--indigo); margin-right: .4rem; }
+  #wrnp4-norm table.sql-table { margin: .6rem 0 .2rem; font-size: .85rem; }
+</style>
+</body>
+</html>

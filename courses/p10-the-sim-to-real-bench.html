@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Practitioner session 10 of 10. The sim-to-real bench: a tiny grasp policy trains in your browser on simulated episodes with your randomization widths, then faces 50 constructed real trials. 29, 37, 46, 49 of 50 up the ladder; 19 of 50 over-randomized; 0 of 50 after an unrecorded camera bump. Synthetic and declared so.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="The sim-to-real bench - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Practitioner session 10 of 10. Every rung computed live, with Wilson intervals, a sim-to-real gap and a per-condition scorecard. Plus a lever that makes it worse and a button that breaks it.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/p10-the-sim-to-real-bench.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The sim-to-real bench - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="Randomize, mix in real demos, score on the real table. Then over-randomize and bump the camera.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Practitioner session 10 · The sim-to-real bench - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Practitioner session 10 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Practitioner session 10 of 10</div>
+    <h1>The <span class="accent">sim-to-real</span> bench</h1>
+    <p class="sub">Everything from the practitioner track on one bench. Wrenfield Lab's grasp policy trains in your browser on simulated episodes with the randomization widths you choose, then faces a constructed real cell that is dimmer than the simulator, has its camera somewhere else, and a lens the simulator does not know about. You read the result the way session 7 taught: successes over trials, a Wilson interval, a sim-to-real gap and a per-condition scorecard. Then you over-randomize and watch both numbers fall, and you bump the real camera and watch the robot miss every parcel. Everything here is synthetic, declared on the widget, and computed in the page.</p>
+    <div class="chip-row">
+      <span class="chip level">🔴 Capstone</span>
+      <span class="chip audience">Practitioners who build and evaluate manipulation policies</span>
+      <span class="chip audience">Leads who sign off "ready for the real robot"</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:3">3-18 · Climb the ladder</span>
+      <span class="a3" style="flex:3">18-28 · Lever and break</span>
+      <span class="a4" style="flex:4">28-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>The question Wrenfield has to answer</h2>
+    </div>
+    <p class="lede">Wrenfield Lab (constructed) has a simulator, 400 simulated grasp episodes a run, twenty real demonstrations recorded by an operator, and fifty real trials of the afternoon's policy on the packing bench. The lead asks one question: is it ready? The bench below answers it the only honest way, by running every rung of the ladder on the same real trials, printing the interval next to each rate, and showing where in the cell the misses live.</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> The whole ladder, computed in front of you on 50 constructed real trials: no randomization 29 of 50 (simulator 100 percent), lighting randomized 37, camera pose randomized too 46, twenty real demonstrations mixed in 49. A scorecard that shows why the last step mattered: the real lens only hurts parcels near the edge of the bench, 17 of 21 before the demos and 20 of 21 after. An anti-lever that over-randomizes and drops the simulator to 47.9 percent and the real cell to 19 of 50. A break button that moves the camera 2 cm without telling anyone and drops 49 of 50 to 0. And the habit: a rate, its trial count and its interval, always together.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What is real and what is constructed<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Real:</strong> the mathematics. Ridge regression solved exactly, the Wilson (1927) score interval, Fisher's exact test, the idea of domain randomization from Tobin et al. (2017), and the habit of mixing a few real demonstrations into simulated training.</p>
+        <p><strong>Constructed, and declared on the widget:</strong> Wrenfield, its robot, its cell, the way lighting bends what the camera sees (a bias of 5d + 5d squared centimetres, d being the lighting change), the real camera's offset, the 8 percent lens, the 1.0 cm grasp tolerance, and every trial. Nothing here is a claim about any real robot. The point is that in a constructed world the truth is known, so you can see what 50 trials do and do not tell you.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the whole ladder, live</span>
+      <h2>Climb the ladder on the same fifty real trials</h2>
+      <span class="tag concept">15 min live</span>
+    </div>
+    <p class="lede">The figure is the constructed world the engine simulates. Three things stand between where a parcel is and where the camera says it is: the lighting, the camera's mounting, and the lens. The policy sees three numbers (where the parcel appears, where a fiducial mark on the table edge appears, and how bright the image is) and predicts where to close the gripper. Each rung of the ladder lets it learn to undo one more of those three.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn mechanism of the constructed bench. On the left the true parcel position. Three distortions sit between it and the camera reading: lighting bends the apparent position, undone by lighting randomization; the camera mounting shifts both the parcel and the table fiducial, undone by camera randomization because the policy learns to subtract the fiducial; and the real lens magnifies by 8 percent, highlighted in marigold, which no simulator width can teach and only real demonstrations correct. On the right the policy reads three numbers, apparent position, fiducial position and brightness, and predicts where to grasp; success if within 1.0 centimetre.">
+        <defs>
+          <filter id="wrnp10aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="41" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp10aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp10aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp10aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp10aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp10aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp10aK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp10aA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp10aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp10aH" x="30" y="30">WHAT STANDS BETWEEN THE PARCEL AND THE GRASP (CONSTRUCTED)</text>
+
+        <g filter="url(#wrnp10aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="56" width="140" height="200" rx="10" transform="rotate(-0.5 100 156)" fill="#FFFFFF"/>
+          <rect x="62" y="132" width="76" height="52" rx="3" transform="rotate(2 100 158)" fill="url(#wrnp10aHc)"/>
+          <rect x="210" y="56" width="180" height="58" rx="8" transform="rotate(0.5 300 85)" fill="#FCEFF7"/>
+          <rect x="210" y="128" width="180" height="58" rx="8" transform="rotate(-0.5 300 157)" fill="#FCEFF7"/>
+          <rect x="210" y="200" width="180" height="58" rx="8" transform="rotate(0.6 300 229)" fill="#F4B63C"/>
+          <path d="M172 156 L206 86" marker-end="url(#wrnp10aAr)"/>
+          <path d="M172 156 L206 157" marker-end="url(#wrnp10aAr)"/>
+          <path d="M172 156 L206 228" marker-end="url(#wrnp10aAr)"/>
+          <rect x="430" y="56" width="170" height="200" rx="10" transform="rotate(0.4 515 156)" fill="#FFFFFF"/>
+          <path d="M392 86 L426 120" marker-end="url(#wrnp10aAr)"/>
+          <path d="M392 157 L426 157" marker-end="url(#wrnp10aAr)"/>
+          <path d="M392 228 L426 194" marker-end="url(#wrnp10aAr)"/>
+          <rect x="640" y="96" width="210" height="120" rx="10" transform="rotate(-0.6 745 156)" fill="#FCEFF7"/>
+          <path d="M602 156 L636 156" marker-end="url(#wrnp10aAr)"/>
+          <!-- doodle: a camera -->
+          <rect x="806" y="40" width="34" height="22" rx="4" fill="#FFFFFF"/>
+          <circle cx="823" cy="51" r="6" fill="#EBB8D7"/>
+        </g>
+
+        <text class="wrnp10aL" x="46" y="80">The parcel</text>
+        <text class="wrnp10aS" x="46" y="100">true position x,</text>
+        <text class="wrnp10aS" x="46" y="116">-10 to 10 cm</text>
+        <text class="wrnp10aS" x="46" y="214">the one thing the</text>
+        <text class="wrnp10aS" x="46" y="230">policy must find</text>
+
+        <text class="wrnp10aL" x="226" y="80">Lighting bends it</text>
+        <text class="wrnp10aA" x="226" y="100">undone by rung 2</text>
+        <text class="wrnp10aL" x="226" y="152">Camera mount shifts it</text>
+        <text class="wrnp10aA" x="226" y="172">undone by rung 3</text>
+        <text class="wrnp10aL" x="226" y="224">Real lens: x 1.08</text>
+        <text class="wrnp10aK" x="226" y="244">only real demos (rung 4)</text>
+
+        <text class="wrnp10aL" x="446" y="80">What the policy sees</text>
+        <text class="wrnp10aK" x="446" y="112">u  where it appears</text>
+        <text class="wrnp10aK" x="446" y="152">e  where the table</text>
+        <text class="wrnp10aK" x="446" y="168">    fiducial appears</text>
+        <text class="wrnp10aK" x="446" y="206">g  image brightness</text>
+
+        <text class="wrnp10aL" x="656" y="124">The policy</text>
+        <text class="wrnp10aS" x="656" y="146">x = b0 + b1 u + b2 e + b3 g</text>
+        <text class="wrnp10aS" x="656" y="168">ridge fit on 400 sim episodes</text>
+        <text class="wrnp10aS" x="656" y="190">success if within 1.0 cm</text>
+
+        <text class="wrnp10aN" x="30" y="298">Randomizing the camera in simulation teaches b2 to be close to -1: the policy learns to subtract the fiducial, so a</text>
+        <text class="wrnp10aN" x="30" y="316">camera that moves takes the fiducial with it and the error cancels. The lens has no such partner: the simulator</text>
+        <text class="wrnp10aN" x="30" y="334">renders at 1.00, so no width teaches 1.08. All constructed; the engine declares every one of these choices.</text>
+        <text class="wrnp10aN" x="30" y="360">The break button moves the camera 2 cm after calibration, without moving what the policy reads as the fiducial.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold box is the gap simulation cannot close by itself: something about the real robot the simulator never modelled.</figcaption>
+    </figure>
+
+    <div class="wk" id="wrnp10-bench">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">Synthetic and constructed, declared here: Wrenfield's cell, lighting bias 5d + 5d squared cm, real camera offset N(0.2, 0.7) cm, real lighting 0.6 to 1.1, real lens 1.08, grasp tolerance 1.0 cm, 400 simulated training episodes, 20 real demonstrations at weight 5. Real: the ridge solve, the Wilson interval and Fisher's exact test. At the canon settings the table prints the canon figures.</span>
+      </div>
+      <div class="wk-body">
+        <label class="sql-label" for="wrnp10-n">Real trials on the bench</label>
+        <select class="sql-code" id="wrnp10-n">
+          <option value="20">20</option>
+          <option value="50" selected>50, the canon</option>
+          <option value="200">200</option>
+        </select>
+        <label class="sql-label" for="wrnp10-seed">Seed for the constructed world</label>
+        <select class="sql-code" id="wrnp10-seed">
+          <option value="1122" selected>1122, the canon</option>
+          <option value="1">1</option>
+          <option value="7">7</option>
+          <option value="42">42</option>
+        </select>
+        <label class="sql-label" for="wrnp10-wl">Your lighting width (plus or minus)</label>
+        <select class="sql-code" id="wrnp10-wl">
+          <option value="0">0</option>
+          <option value="0.2">0.2</option>
+          <option value="0.4" selected>0.4, the ladder's</option>
+          <option value="0.7">0.7</option>
+          <option value="0.95">0.95, over-randomized</option>
+        </select>
+        <label class="sql-label" for="wrnp10-wc">Your camera width (plus or minus, cm)</label>
+        <select class="sql-code" id="wrnp10-wc">
+          <option value="0">0</option>
+          <option value="1.5">1.5</option>
+          <option value="3" selected>3, the ladder's</option>
+          <option value="6">6</option>
+          <option value="12">12, over-randomized</option>
+        </select>
+        <label class="sql-label" for="wrnp10-demos">Real demonstrations mixed in</label>
+        <select class="sql-code" id="wrnp10-demos">
+          <option value="0">none</option>
+          <option value="1" selected>20, weight 5</option>
+        </select>
+        <div class="wrnp10-btns">
+          <button class="btn primary" id="wrnp10-anti" type="button">Over-randomize everything</button>
+          <button class="btn" id="wrnp10-break" type="button">Bump the real camera 2 cm</button>
+          <button class="btn" id="wrnp10-reset" type="button">Back to the canon settings</button>
+        </div>
+        <div id="wrnp10-out"></div>
+        <div id="wrnp10-card"></div>
+        <p class="sql-note" id="wrnp10-verdict">...</p>
+      </div>
+      <div class="wk-foot" id="wrnp10-self">...</div>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The five runs worth doing first<span class="mini">6 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Leave everything alone.</strong> The ladder reads 29, 37, 46 and 49 of 50, with the simulator at 100, 98.6, 98.6 and 98.0 percent. The sim-to-real gap shrinks from 42 points to 24.6, 6.6 and 0. Rung 4 against rung 1: Fisher's exact test gives p below 0.0001, a real difference even at 50 trials.</li>
+          <li><strong>Read the "true rate" column.</strong> Only a constructed world can run 2,000 real trials: 0.656, 0.716, 0.908, 0.951. Every 50-trial Wilson interval on the canon seed contains its true rate. That is what a 95 percent interval is for.</li>
+          <li><strong>Set the trials to 20.</strong> Rungs 2, 3 and 4 read 18, 19 and 20 of 20. Their intervals overlap almost entirely, yet the true rates are 0.716, 0.908 and 0.951. Twenty trials cannot rank them; practitioner session 7 in one row.</li>
+          <li><strong>Set the trials to 200.</strong> 130, 147, 190, 197. Now even rung 3 against rung 4 is visible, and the over-randomized policy reads 64 of 200.</li>
+          <li><strong>Try seeds 1, 7 and 42.</strong> At 50 trials: 26, 38, 46, 48; then 34, 34, 45, 48; then 35, 43, 46, 48. Seed 7 shows rungs 1 and 2 tied at 34 although their true rates differ. Quote seed-1122 numbers and say "your numbers move with the seed". What holds is the shape.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why the policy can learn to cancel the camera<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The camera's mounting offset adds the same amount to where the parcel appears and to where the table fiducial appears. If the simulator varies that offset, the regression sees the two readings move together and learns to subtract one from the other: at rung 3 the fiducial coefficient b2 is -0.994. Without camera randomization the fiducial never moves in simulation, its coefficient sits near zero (0.016 at rung 1), and every real offset passes straight into the grasp.</p>
+        <p>This is the mechanism behind Tobin et al. (2017) placing the simulated camera anywhere inside a 10 by 5 by 10 cm box: the model has to learn features that do not depend on exactly where the camera is. In their ablation, dropping camera randomization raised real error from 1.3 to 2.0 cm on objects alone.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers the scorecard and where the misses live</span>
+      <h2>A rate is a summary; the scorecard is the diagnosis</h2>
+      <span class="tag concept">10 min live</span>
+    </div>
+    <p class="lede">An overall success rate tells you whether to worry. A breakdown by condition tells you what to fix. The bench splits the 50 real trials two ways: by lighting (33 dim trials below 0.85, 17 normal) and by where the parcel sat (29 near the centre, 21 near an edge). Each remaining failure has an address.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn heatmap of real successes by condition for the constructed bench, seed 1122, 50 trials. Columns: dim light out of 33, normal light out of 17, centre out of 29, edge out of 21. No randomization: 17, 12, 18, 11. Lighting randomized: 25, 12, 23, 14. Plus camera pose: 30, 16, 29, 17, with the edge cell highlighted in marigold. Plus 20 real demos: 32, 17, 29, 20. Over-randomized: 17, 2, 7, 12.">
+        <defs>
+          <filter id="wrnp10bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="43" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp10bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp10bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp10bH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp10bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp10bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp10bV { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp10bW { font: 800 12px Inter, sans-serif; fill: #FFFFFF; }
+          .wrnp10bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp10bH" x="30" y="30">REAL SUCCESSES BY CONDITION, SEED 1122, 50 TRIALS (CONSTRUCTED)</text>
+        <text class="wrnp10bS" x="268" y="58" text-anchor="middle">dim, of 33</text>
+        <text class="wrnp10bS" x="388" y="58" text-anchor="middle">normal, of 17</text>
+        <text class="wrnp10bS" x="508" y="58" text-anchor="middle">centre, of 29</text>
+        <text class="wrnp10bS" x="628" y="58" text-anchor="middle">edge, of 21</text>
+
+        <g filter="url(#wrnp10bSk)" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="210" y="68" width="116" height="38" rx="4" fill="#FFFFFF"/>
+          <rect x="330" y="68" width="116" height="38" rx="4" fill="#FCEFF7"/>
+          <rect x="450" y="68" width="116" height="38" rx="4" fill="#FCEFF7"/>
+          <rect x="570" y="68" width="116" height="38" rx="4" fill="#FFFFFF"/>
+          <rect x="210" y="110" width="116" height="38" rx="4" fill="#FCEFF7"/>
+          <rect x="330" y="110" width="116" height="38" rx="4" fill="#FCEFF7"/>
+          <rect x="450" y="110" width="116" height="38" rx="4" fill="#FCEFF7"/>
+          <rect x="570" y="110" width="116" height="38" rx="4" fill="#FCEFF7"/>
+          <rect x="210" y="152" width="116" height="38" rx="4" fill="#EBB8D7"/>
+          <rect x="330" y="152" width="116" height="38" rx="4" fill="#EBB8D7"/>
+          <rect x="450" y="152" width="116" height="38" rx="4" fill="#9B0865"/>
+          <rect x="570" y="152" width="116" height="38" rx="4" fill="#F4B63C"/>
+          <rect x="210" y="194" width="116" height="38" rx="4" fill="#9B0865"/>
+          <rect x="330" y="194" width="116" height="38" rx="4" fill="#9B0865"/>
+          <rect x="450" y="194" width="116" height="38" rx="4" fill="#9B0865"/>
+          <rect x="570" y="194" width="116" height="38" rx="4" fill="#9B0865"/>
+          <rect x="210" y="236" width="116" height="38" rx="4" fill="#FFFFFF"/>
+          <rect x="330" y="236" width="116" height="38" rx="4" fill="#FFFFFF"/>
+          <rect x="450" y="236" width="116" height="38" rx="4" fill="#FFFFFF"/>
+          <rect x="570" y="236" width="116" height="38" rx="4" fill="#FFFFFF"/>
+          <path d="M700 171 L742 171" marker-end="url(#wrnp10bAr)"/>
+        </g>
+
+        <text class="wrnp10bL" x="198" y="91" text-anchor="end">No randomization</text>
+        <text class="wrnp10bL" x="198" y="133" text-anchor="end">Lighting randomized</text>
+        <text class="wrnp10bL" x="198" y="175" text-anchor="end">+ camera pose</text>
+        <text class="wrnp10bL" x="198" y="217" text-anchor="end">+ 20 real demos</text>
+        <text class="wrnp10bL" x="198" y="259" text-anchor="end">Over-randomized</text>
+
+        <text class="wrnp10bV" x="268" y="91" text-anchor="middle">17</text>
+        <text class="wrnp10bV" x="388" y="91" text-anchor="middle">12</text>
+        <text class="wrnp10bV" x="508" y="91" text-anchor="middle">18</text>
+        <text class="wrnp10bV" x="628" y="91" text-anchor="middle">11</text>
+        <text class="wrnp10bV" x="268" y="133" text-anchor="middle">25</text>
+        <text class="wrnp10bV" x="388" y="133" text-anchor="middle">12</text>
+        <text class="wrnp10bV" x="508" y="133" text-anchor="middle">23</text>
+        <text class="wrnp10bV" x="628" y="133" text-anchor="middle">14</text>
+        <text class="wrnp10bV" x="268" y="175" text-anchor="middle">30</text>
+        <text class="wrnp10bV" x="388" y="175" text-anchor="middle">16</text>
+        <text class="wrnp10bW" x="508" y="175" text-anchor="middle">29</text>
+        <text class="wrnp10bV" x="628" y="175" text-anchor="middle">17</text>
+        <text class="wrnp10bW" x="268" y="217" text-anchor="middle">32</text>
+        <text class="wrnp10bW" x="388" y="217" text-anchor="middle">17</text>
+        <text class="wrnp10bW" x="508" y="217" text-anchor="middle">29</text>
+        <text class="wrnp10bW" x="628" y="217" text-anchor="middle">20</text>
+        <text class="wrnp10bV" x="268" y="259" text-anchor="middle">17</text>
+        <text class="wrnp10bV" x="388" y="259" text-anchor="middle">2</text>
+        <text class="wrnp10bV" x="508" y="259" text-anchor="middle">7</text>
+        <text class="wrnp10bV" x="628" y="259" text-anchor="middle">12</text>
+
+        <text class="wrnp10bL" x="750" y="166">the lens: misses</text>
+        <text class="wrnp10bL" x="750" y="182">at the edges</text>
+
+        <text class="wrnp10bN" x="30" y="300">Shade by share: white below 60%, pale to 80%, mid to 95%, berry 95% and up. Read each column against its own total.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - after camera randomization the only column still losing grasps is the edge; that is the lens, and only real demonstrations fix it.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Reading the four columns<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Rung 1 fails in the dim.</strong> 17 of 33 dim trials against 12 of 17 normal. The simulator only ever rendered one brightness, so the policy has no idea that a darker image moves the apparent position.</p>
+        <p><strong>Rung 2 fixes the dim, not the rest.</strong> Dim rises to 25 of 33; edge is still 14 of 21. The camera offset is still unhandled.</p>
+        <p><strong>Rung 3 leaves one address.</strong> 30 of 33 dim, 16 of 17 normal, 29 of 29 centre, but 17 of 21 at the edge. A lens that magnifies by 8 percent moves a parcel at 9 cm by about 0.7 cm and a parcel at 1 cm by 0.08 cm. Against a 1.0 cm tolerance, only the edges notice.</p>
+        <p><strong>Rung 4 closes it.</strong> Twenty real demonstrations carry the real lens, and the edge reads 20 of 21. No simulator width could have done that, because the simulator does not have the lens in it.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Small cells, wide intervals<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Breaking 50 trials into conditions gives cells of 17 to 33. The scorecard prints a Wilson interval for each cell, and they are wide: 17 of 21 is 60 to 92 percent. A per-condition breakdown is a place to look, not a verdict per condition. Kress-Gazit et al. (2024) make the same point from real experiments: success depends heavily on the initial condition, so comparing policies on different initial conditions can produce a false conclusion. Match them, and report them.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers the anti-lever and the break button</span>
+      <h2>A lever that makes it worse, and a button that breaks it</h2>
+      <span class="tag concept">10 min live</span>
+    </div>
+    <p class="lede">A bench that can only report good news is not a bench. Two controls make it report bad news, each for a reason a real team meets. The anti-lever over-randomizes: lighting from almost black to almost double, the camera anywhere within 12 cm. The break button moves the real camera 2 cm after calibration and changes nothing the policy reads about it.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Two hand drawn panels. Left, over-randomizing: a curved line of lighting bias against lighting, and a straight fitted line across the very wide range that misses the curve near ordinary lighting, where the real cell lives; simulated success 47.9 percent, real 19 of 50, and only 2 of 17 in normal light. Right, the break: the camera bumped 2 centimetres, the parcel appears 2 centimetres away, but the fiducial reading comes from the calibration file and does not move, so every grasp misses by about 2 centimetres against a 1 centimetre tolerance; 49 of 50 becomes 0 of 50.">
+        <defs>
+          <filter id="wrnp10cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="47" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp10cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp10cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp10cH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp10cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp10cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp10cA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp10cB { font: 800 12px Inter, sans-serif; fill: #991B1B; }
+          .wrnp10cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp10cH" x="40" y="32">ANTI-LEVER: OVER-RANDOMIZE</text>
+        <text class="wrnp10cH" x="470" y="32">BREAK: THE CAMERA MOVED, NOBODY TOLD THE DATA</text>
+
+        <g filter="url(#wrnp10cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="40" y="44" width="390" height="196" rx="12" transform="rotate(-0.3 235 142)" fill="#FEF2F2" stroke="#FCA5A5"/>
+          <path d="M70 210 L410 210 M70 210 L70 60"/>
+          <rect x="190" y="64" width="90" height="146" fill="#FEF4DD" stroke="#F4B63C" stroke-width="1.4"/>
+          <path d="M80 196 C150 190 200 170 240 150 C290 122 340 90 400 64" stroke="#9B0865" stroke-width="2.4"/>
+          <path d="M80 168 L400 92" stroke-dasharray="6 4"/>
+          <rect x="460" y="44" width="390" height="196" rx="12" transform="rotate(0.3 655 142)" fill="#FEF2F2" stroke="#FCA5A5"/>
+          <rect x="490" y="150" width="60" height="40" rx="3" fill="url(#wrnp10cHc)"/>
+          <rect x="610" y="150" width="60" height="40" rx="3" stroke-dasharray="5 4" fill="#FFFFFF"/>
+          <path d="M552 170 L604 170" marker-end="url(#wrnp10cAr)"/>
+          <rect x="740" y="70" width="70" height="40" rx="5" transform="rotate(-6 775 90)" fill="#FFFFFF"/>
+          <path d="M520 214 L820 214" stroke-dasharray="3 5" stroke="#66505E"/>
+        </g>
+
+        <text class="wrnp10cS" x="196" y="80">real cell</text>
+        <text class="wrnp10cA" x="84" y="182">the curve</text>
+        <text class="wrnp10cS" x="300" y="160">straight fit across</text>
+        <text class="wrnp10cS" x="300" y="176">the whole wide range</text>
+        <text class="wrnp10cS" x="80" y="228">lighting, almost black to almost double</text>
+
+        <text class="wrnp10cL" x="490" y="140">parcel</text>
+        <text class="wrnp10cL" x="604" y="140">where it appears</text>
+        <text class="wrnp10cS" x="552" y="204">2 cm</text>
+        <text class="wrnp10cL" x="700" y="64">bumped camera</text>
+        <text class="wrnp10cS" x="530" y="230">fiducial read from the old calibration file</text>
+
+        <text class="wrnp10cB" x="40" y="268">sim 47.9%, real 19 of 50; normal light only 2 of 17</text>
+        <text class="wrnp10cB" x="470" y="268">49 of 50 becomes 0 of 50</text>
+        <text class="wrnp10cN" x="40" y="304">Both constructed and computed by the bench. Wide enough to cover the real cell helps; far wider costs accuracy everywhere.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the anti-lever spends the policy's accuracy on conditions that never happen; the break shows a calibration change is a data change.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What the anti-lever teaches<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Press "Over-randomize everything". The simulator itself now scores 47.9 percent, because many of its episodes are so dark that the image is mostly noise. The real cell scores 19 of 50, worse than doing nothing at all (29 of 50). The scorecard says where: only 2 of 17 grasps succeed in normal light, the condition the real cell is best at.</p>
+        <p>The mechanism is capacity. Wrenfield's policy is a straight line in brightness, and the lighting effect is a curve. Fitted over a narrow range, a line is a good approximation of a curve; fitted over a huge range, the line is pulled by the extremes and misses the middle. Real policies have far more capacity than a line, but they have finite capacity and finite data, and the same trade applies: every training episode spent on conditions that never occur is not spent on the ones that do. Mehta et al. (2019) attribute "suboptimal, high-variance policies" to uniform randomization. How wide is right is a judgement made per robot, and it is checked on the real cell.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>What the break button teaches<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Press "Bump the real camera 2 cm". Rung 4, which scored 49 of 50, scores 0 of 50, and the true rate over 2,000 constructed trials falls from 0.951 to 0.025. Nothing in the model changed. The policy reads the fiducial position from the calibration it was given; the camera moved after that, so every grasp lands about 2 cm off against a 1.0 cm tolerance.</p>
+        <p>In real collections teams calibrate on a schedule and check it. DROID (2024) recorded an initial checkerboard calibration and later ran an automatic calibration with quality metrics across tens of thousands of scenes. The lesson for a data team: a calibration file is part of every episode's identity (practitioner session 2), and a silent change to it is a silent change to every row after it.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ BUILD-ALONG ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Write Wrenfield's readiness note from the bench</h2>
+      <span class="tag demo">★ 17 min · everyone builds</span>
+    </div>
+    <p class="lede">You will produce the one paragraph a lead can sign: a rate, its trials, its interval, the conditions, what changed, and what could break it. The figure shows why the trial count goes first: at 20 trials, three very different policies look the same.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn interval chart for 20 constructed real trials, seed 1122. Lighting randomized 18 of 20, Wilson 70 to 97 percent, true rate 71.6 percent. Plus camera pose 19 of 20, interval 76 to 99 percent, true 90.8. Plus 20 real demos 20 of 20, interval 84 to 100 percent, true 95.1, highlighted in marigold. The three intervals overlap heavily while the true rates differ by more than 20 points.">
+        <defs>
+          <filter id="wrnp10dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="53" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp10dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp10dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp10dH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp10dL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp10dS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp10dA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp10dN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp10dH" x="30" y="30">20 REAL TRIALS: WILSON 95% INTERVALS (BARS) AND THE TRUE RATE (TICK), CONSTRUCTED</text>
+        <text class="wrnp10dA" x="260" y="218" text-anchor="middle">60%</text>
+        <text class="wrnp10dA" x="500" y="218" text-anchor="middle">80%</text>
+        <text class="wrnp10dA" x="740" y="218" text-anchor="middle">100%</text>
+
+        <g filter="url(#wrnp10dSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M260 200 L740 200 M260 196 L260 204 M500 196 L500 204 M740 196 L740 204"/>
+          <rect x="379" y="60" width="327" height="22" rx="6" fill="#FCEFF7"/>
+          <rect x="457" y="110" width="272" height="22" rx="6" fill="#FCEFF7"/>
+          <rect x="547" y="160" width="193" height="22" rx="6" fill="#F4B63C"/>
+          <path d="M399 54 L399 88 M630 104 L630 138 M681 154 L681 188" stroke="#6B0546" stroke-width="3"/>
+        </g>
+
+        <text class="wrnp10dL" x="240" y="76" text-anchor="end">Lighting: 18 of 20</text>
+        <text class="wrnp10dS" x="240" y="92" text-anchor="end">true 71.6%</text>
+        <text class="wrnp10dL" x="240" y="126" text-anchor="end">+ camera: 19 of 20</text>
+        <text class="wrnp10dS" x="240" y="142" text-anchor="end">true 90.8%</text>
+        <text class="wrnp10dL" x="240" y="176" text-anchor="end">+ demos: 20 of 20</text>
+        <text class="wrnp10dS" x="240" y="192" text-anchor="end">true 95.1%</text>
+
+        <text class="wrnp10dN" x="30" y="252">The intervals overlap almost completely while the true rates differ by 23.5 points. Twenty trials say "probably</text>
+        <text class="wrnp10dN" x="30" y="270">above 70 percent" for all three. Only more trials, or a paired design (practitioner session 7), separate them.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - 18, 19 and 20 of 20 look like a ranking; the intervals say twenty trials cannot rank these three.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Run the canon and copy the rung-4 row</h4>
+        <p>Leave the settings alone. Write down successes, trials and the Wilson interval for the top rung.</p>
+        <div class="prompt-box good"><span class="label">Your line 1</span>Real cell, 50 trials: 49 successes (98%), Wilson 95% 89.5% to 99.6%. Simulator 98.0%; gap 0.0 points.</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Add the conditions from the scorecard</h4>
+        <p>Name the slices and their counts, smallest first. A reader should see that every condition was tried, and how often.</p>
+        <div class="prompt-box good"><span class="label">Your line 2</span>Dim light 32 of 33, normal 17 of 17; parcels near the centre 29 of 29, near an edge 20 of 21.</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Say what moved the number</h4>
+        <p>Compare with rung 1 and name the three changes, in order, with the edge column as the evidence for the last one.</p>
+        <div class="prompt-box good"><span class="label">Your line 3</span>Up from 29 of 50 with no randomization (Fisher p below 0.0001). Lighting and camera randomization in simulation; 20 real demonstrations fixed the edge misses (17 to 20 of 21).</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Say what would break it</h4>
+        <p>Press the break button and write the dependency you just saw. Then press the anti-lever and write the limit on widening.</p>
+        <div class="prompt-box good"><span class="label">Your line 4</span>Depends on the camera calibration: a 2 cm unrecorded move drops it to 0 of 50. Re-check calibration before every evaluation. Do not widen randomization past the cell: over-randomized scored 19 of 50.</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Change the seed and rewrite line 1</h4>
+        <p>Pick seed 7. Rewrite line 1 with its numbers (your numbers will differ from the canon). Does the conclusion change? It should not, and if it did, that would be the finding.</p>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> A readiness note leads with successes over trials and the interval, then conditions, then what changed, then what breaks it. A note that leads with "98 percent" has buried the three facts a lead needs.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">After camera randomization Wrenfield's policy (constructed) scores 46 of 50, with 17 of 21 at the edges and 29 of 29 at the centre. What is the most useful next step?</p>
+      <button class="qopt" type="button">A · Randomize the camera even more widely</button>
+      <button class="qopt" type="button">B · Report 92 percent and stop</button>
+      <button class="qopt" type="button">C · Look for something about the real robot the simulator does not model, and add a few real demonstrations that carry it</button>
+      <p class="qwhy">The misses cluster at the edges, which points at a distortion that grows with distance from the centre: here the real lens. No simulator width contains it, so A cannot help; real demonstrations took the edge to 20 of 21.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">Over-randomizing drops the simulator's own score to 47.9 percent and the real score to 19 of 50. Why does the simulator's score fall too?</p>
+      <button class="qopt" type="button">A · Many simulated episodes are now in conditions so extreme that the policy, fitted across all of them, is inaccurate almost everywhere</button>
+      <button class="qopt" type="button">B · The random seed changed</button>
+      <button class="qopt" type="button">C · The simulator has a bug</button>
+      <p class="qwhy">A limited policy fitted across a huge range spends its accuracy on the extremes. The same seed and the same engine produce the 98 percent rows; only the widths changed.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">With 20 trials, three policies score 18, 19 and 20 of 20. What can you conclude?</p>
+      <button class="qopt" type="button">A · The third is best, the first is worst</button>
+      <button class="qopt" type="button">B · All three are probably above about 70 percent; 20 trials cannot rank them, and in this constructed world their true rates are 0.716, 0.908 and 0.951</button>
+      <button class="qopt" type="button">C · All three are perfect</button>
+      <p class="qwhy">The Wilson intervals (70 to 97, 76 to 99, 84 to 100 percent) overlap almost completely. Practitioner session 7 shows how many trials, or what paired design, would separate them.</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">After the capstone</span>
+      <h2>Homework</h2>
+    </div>
+    <p class="lede">Thirty minutes on the bench, then on your own work.</p>
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Find the smallest widths that still work</h4>
+        <p>With demonstrations on and 200 trials, lower the lighting and camera widths one step at a time. Write down where the real score starts to fall. Your numbers will differ by seed; record the seed.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Write the readiness note for seed 42</h4>
+        <p>Four lines, in the order of the build-along. Compare it with the canon note and mark what changed.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>List your own "lens"</h4>
+        <p>For a robot or any model you know, name one property of the real setting that its training simulator or data does not contain. What would the smallest real dataset that carries it look like?</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Write the calibration check</h4>
+        <p>One paragraph: how often you would re-check camera calibration, what number would trigger a re-calibration, and how each episode would record which calibration it used.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The sim-to-real ladder</span><span class="note">Constructed, computed in the page: 29, 37, 46, 49 of 50; simulator 100, 98.6, 98.6, 98.0 percent.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Domain randomization</span><span class="note">Tobin et al. (2017), arXiv 1703.06907: camera box 10 by 5 by 10 cm; camera ablation 1.3 to 2.0 cm. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Over-randomization</span><span class="note">Mehta et al. (2019), "Active Domain Randomization", arXiv 1904.04762. Read at source (abstract). Bench: 19 of 50.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Calibration as identity</span><span class="note">Khazatsky et al. (2024), DROID, arXiv 2403.12945: checkerboard then automatic calibration. Read at source. Bench: 0 of 50.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Intervals and comparisons</span><span class="note">Wilson (1927), JASA, reported; Fisher's exact test. Engine matches a standard library to 1e-9.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Per-condition evaluation</span><span class="note">Kress-Gazit et al. (2024), arXiv 2409.09491: initial conditions and failure modes. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Mixing real and simulated data</span><span class="note">Modelled here with one weight; how to weight real data is a design choice, not settled.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Large policies and image models</span><span class="note">Out of scope; vision models live in <a href="https://phoebefu6.github.io/learn-computer-vision-with-phoebe/">learn computer vision</a>.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Rare events over millions of miles</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-autonomous-driving-with-phoebe/">learn autonomous driving</a>.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>The ladder.</strong> None 29, lighting 37, + camera 46, + 20 real demos 49, of 50 (constructed).</div>
+      <div class="cheat-item"><strong>The gap.</strong> Simulator minus real: 42, 24.6, 6.6, 0 points.</div>
+      <div class="cheat-item"><strong>The scorecard.</strong> Edge misses after camera randomization (17 of 21) point at the lens.</div>
+      <div class="cheat-item"><strong>The anti-lever.</strong> Over-randomized: simulator 47.9 percent, real 19 of 50.</div>
+      <div class="cheat-item"><strong>The break.</strong> An unrecorded 2 cm camera move: 49 of 50 becomes 0.</div>
+      <div class="cheat-item"><strong>Twenty trials.</strong> 18, 19, 20 of 20 cannot be ranked; true rates 0.716, 0.908, 0.951.</div>
+      <div class="cheat-item"><strong>The note.</strong> Successes over trials, interval, conditions, what changed, what breaks it.</div>
+      <div class="cheat-item"><strong>The honest label.</strong> Synthetic, seeded, declared; your numbers move with the seed.</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>Back to the leader track.</strong> If you skipped it, leader session 5 draws why the warehouse playbook breaks here, mechanism by mechanism.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Practitioner session 10 of 10 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="p9-shared-space-and-stop-logs.html">← Prev: Shared space and stop logs</a>
+        <a href="../index.html">Course home →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/pai-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  if (typeof PAI === "undefined") return;
+  var $ = function (id) { return document.getElementById(id); };
+  var nSel = $("wrnp10-n"), seedSel = $("wrnp10-seed"), wl = $("wrnp10-wl"), wc = $("wrnp10-wc"), demos = $("wrnp10-demos");
+  var out = $("wrnp10-out"), card = $("wrnp10-card"), verdict = $("wrnp10-verdict"), self = $("wrnp10-self");
+  var showBreak = false;
+  window.WRN_BENCH = { last: null };
+
+  function pct(x, d) { return (100 * x).toFixed(d === undefined ? 1 : d) + "%"; }
+  function ci(r) { return pct(r.ci.lo) + " to " + pct(r.ci.hi); }
+  function cell(c) {
+    if (!c[1]) return "none";
+    var w = PAI.wilson(c[0], c[1]);
+    return "<b>" + c[0] + " / " + c[1] + "</b><br><span class=\"wrnp10-ci\">" + pct(w.lo, 0) + " to " + pct(w.hi, 0) + "</span>";
+  }
+  function opts() { return { seed: Number(seedSel.value), nTrials: Number(nSel.value) }; }
+  function isCanon() { return nSel.value === "50" && seedSel.value === "1122" && wl.value === "0.4" && wc.value === "3" && demos.value === "1" && !showBreak; }
+
+  function render() {
+    var o = opts();
+    out.innerHTML = '<p class="sql-note">Training the policy on every rung in your browser...</p>';
+    setTimeout(function () {
+      var L = PAI.ladder(o);
+      var you = PAI.custom({ wL: Number(wl.value), wC: Number(wc.value), demos: demos.value === "1", bump: showBreak }, o);
+      window.WRN_BENCH.last = { ladder: L, custom: you };
+      var html = '<table class="sql-table"><thead><tr><th>Rung</th><th>Sim</th><th>Real</th><th>Wilson 95%</th><th>Gap</th><th>True rate</th></tr></thead><tbody>';
+      L.rungs.forEach(function (r, i) {
+        html += "<tr><td>" + (i + 1) + " · " + r.label + "</td><td>" + pct(r.sim) + "</td><td><b>" + r.real.k + " / " + r.real.n + "</b></td><td>" + ci(r.real) + "</td><td>" + (100 * r.gap).toFixed(1) + "</td><td>" + r.truth.toFixed(3) + "</td></tr>";
+      });
+      html += '<tr class="wrnp10-you"><td>Your widths: light ' + wl.value + ", camera " + wc.value + " cm, " + (demos.value === "1" ? "20 demos" : "no demos") + "</td><td>" + pct(you.sim) + "</td><td><b>" + you.real.k + " / " + you.real.n + "</b></td><td>" + ci(you.real) + "</td><td>" + (100 * you.gap).toFixed(1) + "</td><td>" + you.truth.toFixed(3) + "</td></tr>";
+      if (showBreak) {
+        html += '<tr class="wrnp10-brk"><td>BREAK: your widths, camera bumped 2 cm, unrecorded</td><td>n/a</td><td><b>' + you.brk.real.k + " / " + you.brk.real.n + "</b></td><td>" + ci(you.brk.real) + "</td><td></td><td>" + you.brk.truth.toFixed(3) + "</td></tr>";
+      }
+      html += "</tbody></table>";
+      html += '<p class="sql-note">Fisher exact, rung 4 against rung 1: p = ' + (L.fisherTopVsNone < 0.0001 ? "below 0.0001" : L.fisherTopVsNone.toFixed(4)) + ". True rate = the same policy on 2,000 constructed real trials, which only a constructed world can run. " +
+        (isCanon() ? "The canon settings." : "Not the canon settings: your numbers will differ from the figures in the prose.") + "</p>";
+      out.innerHTML = html;
+
+      var c = '<table class="sql-table"><thead><tr><th>Scorecard: your widths</th><th>Dim light</th><th>Normal light</th><th>Centre</th><th>Edge</th></tr></thead><tbody>';
+      c += "<tr><td>Real successes, Wilson 95%</td><td>" + cell(you.real.dim) + "</td><td>" + cell(you.real.normal) + "</td><td>" + cell(you.real.centre) + "</td><td>" + cell(you.real.edge) + "</td></tr></tbody></table>";
+      card.innerHTML = c;
+
+      var msg = "Your widths: simulator " + pct(you.sim) + ", real " + you.real.k + " of " + you.real.n + " (" + ci(you.real) + "), sim-to-real gap " + (100 * you.gap).toFixed(1) + " points.";
+      if (Number(wl.value) >= 0.95 && Number(wc.value) >= 12) msg += " Over-randomized: the simulator itself falls because a straight-line policy fitted across almost-black to almost-double lighting misses the ordinary middle, where the real cell lives (normal light " + you.real.normal[0] + " of " + you.real.normal[1] + ").";
+      if (demos.value !== "1" && Number(wc.value) > 0 && Number(wl.value) < 0.9 && you.real.edge[0] < you.real.edge[1]) msg += " Edge misses remain: the real lens magnifies by 8 percent and only real demonstrations carry it.";
+      if (showBreak) msg += " Break: the camera moved 2 cm after calibration and the fiducial reading did not, so grasps land about 2 cm off against a 1.0 cm tolerance: " + you.brk.real.k + " of " + you.brk.real.n + ". Cause: an unmodelled camera offset.";
+      verdict.textContent = msg;
+    }, 20);
+  }
+
+  $("wrnp10-anti").addEventListener("click", function () { wl.value = "0.95"; wc.value = "12"; demos.value = "0"; showBreak = false; render(); });
+  $("wrnp10-break").addEventListener("click", function () { showBreak = true; render(); });
+  $("wrnp10-reset").addEventListener("click", function () { nSel.value = "50"; seedSel.value = "1122"; wl.value = "0.4"; wc.value = "3"; demos.value = "1"; showBreak = false; render(); });
+  [nSel, seedSel, wl, wc, demos].forEach(function (el) { el.addEventListener("change", render); });
+
+  var st = PAI.selfTestResult || PAI.selfTest();
+  var faults = PAI.FAULTS.filter(function (f) { return !PAI.selfTest(f).pass; }).length;
+  self.textContent = st.pass
+    ? "The engine's " + st.checks.length + " self-checks pass in this browser, and " + faults + " of " + PAI.FAULTS.length + " planted faults make a check fail, as they should. Synthetic: Wrenfield and every trial are constructed."
+    : "The engine's self-check did not pass in this browser, so nothing above should be believed.";
+  render();
+})();
+</script>
+<style>
+  #wrnp10-bench .sql-code { border: 1px solid var(--hairline); border-radius: 8px; max-width: 24rem; }
+  #wrnp10-bench table.sql-table { margin: .6rem 0 .2rem; font-size: .82rem; }
+  #wrnp10-bench .wrnp10-btns { display: flex; flex-wrap: wrap; gap: .5rem; margin: .7rem 0 .3rem; }
+  #wrnp10-bench tr.wrnp10-you td { background: var(--amber-50); }
+  #wrnp10-bench tr.wrnp10-brk td { background: #FEF2F2; color: #991B1B; }
+  #wrnp10-bench .wrnp10-ci { color: var(--muted); font-size: .76rem; }
+  #wrnp10-bench #wrnp10-out, #wrnp10-bench #wrnp10-card { overflow-x: auto; }
+</style>
+</body>
+</html>

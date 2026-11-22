@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Leader session 5 of 6. Five mechanisms a warehouse data project relies on without naming them, and what robot data does to each: the source, the identity, the ground truth, the feedback loop and the cost of being wrong. Wrenfield Lab is a constructed team. Not legal or investment advice.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Why the warehouse playbook breaks here - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Leader session 5 of 6. Source, identity, ground truth, feedback loop and cost of being wrong: each one drawn twice, once for the warehouse and once for the robot.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/a5-why-the-warehouse-playbook-breaks-here.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Why the warehouse playbook breaks here - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="A robot dataset is a sample of the policy that collected it, and its success flag is a rule a person applied. Plan for both on day one.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Leader session 5 · Why the warehouse playbook breaks here - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Leader session 5 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Leader session 5 of 6</div>
+    <h1>Why the warehouse playbook <span class="accent">breaks here</span></h1>
+    <p class="sub">A warehouse data project leans on five things nobody writes down: where the row came from, what makes two rows the same, who says a label is true, whether the report changes the data, and what a mistake costs. Robot data changes all five. Tonight takes them one mechanism at a time, each drawn twice: once as it works in the warehouse, once as it works at a robot cell. Wrenfield Lab, the constructed robotics team from the earlier sessions, supplies the worked examples; every Wrenfield number is generated, not observed. Safety standards are described as reported; nothing here is legal or investment advice.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Advanced</span>
+      <span class="chip audience">Leaders who fund or sign off robotics data work</span>
+      <span class="chip audience">Data people arriving from the warehouse</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:6">3-22 · Source, identity, truth, loop</span>
+      <span class="a3" style="flex:2">22-28 · Cost of being wrong</span>
+      <span class="a4" style="flex:5">28-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Wrenfield's analyst brings her old checklist</h2>
+    </div>
+    <p class="lede">Wrenfield Lab is constructed. Its data analyst came from a retail warehouse, where she ran a clean playbook: land the source tables, key every row, trust the labels the systems wrote, refresh the dashboard weekly, fix mistakes in next week's report. Six weeks into robotics she has a list of things that went wrong, and every one traces back to a step of that playbook that quietly assumed something robot data does not give you. The five mechanisms below are her list, cleaned up.</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> Five mechanisms where a conventional data project changes shape at a robot: the source is sensors on one clock steered by the policy, not events people meant; the identity of an episode is a bundle of robot, calibration, policy, operator, scene, success rule and software, not one key; the ground truth is a flag a person set by a versioned rule; the feedback loop means data from a new policy is a different sample; and a wrong action moves an arm near people, so evaluation has to count where they were. A worksheet to run any warehouse project through all five, and the one question to ask a robotics team on day one.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why "same skills, new domain" is half right<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Most of what a good warehouse data person knows carries over: lineage, versioning, joins that fail loudly, metrics with written definitions. What does not carry over is the set of defaults underneath. In a warehouse they are true often enough that nobody checks them. At a robot cell they are false often enough that checking them is the job.</p>
+        <p>The honest framing for a leader is not "robotics data is harder". It is "five defaults flip, and each one needs a specific replacement". Leader session 6 turns that into a transfer map; tonight is the mechanism behind each flip.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>The Open X-Embodiment Collaboration (2023) pooled more than a million real robot trajectories: 60 datasets from 22 robot types across 21 institutions. To train one model on them, the authors aligned the data only coarsely, one canonical camera view per dataset and a shared 7-number action, and they state the limits plainly: "we do not align the coordinate frames across datasets", and camera observations "still vary substantially". A warehouse merge of 60 sources would never ship with that caveat; in robotics it is the honest state of the art.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The words that keep coming back<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Episode.</strong> One attempt at a task, start to finish, every sensor on one clock, plus a success flag (practitioner session 1).</li>
+          <li><strong>Policy.</strong> The model that maps what the robot senses to what it does next. It also decides, without meaning to, which situations end up in the data.</li>
+          <li><strong>Calibration.</strong> The file that says where each camera really is relative to the robot. Move a camera without updating it and every frame lies quietly (practitioner session 2).</li>
+          <li><strong>Success rule.</strong> The written definition a person applies to mark an episode a success or a failure. It has a version, like code.</li>
+          <li><strong>Intervention.</strong> A person taking over or stopping the robot during a rollout. A useful label, and a biased one (practitioner session 8).</li>
+          <li><strong>Protective stop.</strong> The robot halting itself because a safety function tripped. A logged event with a cost (practitioner session 9).</li>
+          <li><strong>Constructed.</strong> Wrenfield Lab and every number about it are invented so the truth is knowable. Research numbers are real and cited.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the source and the identity</span>
+      <h2>Who wrote the row, and what makes two rows the same</h2>
+      <span class="tag concept">10 min live</span>
+    </div>
+    <p class="lede">The first two mechanisms are the ones a data engineer meets in week one. A warehouse row is an event someone meant, a customer buying, a picker scanning, and it would have happened whether or not anyone logged it. A robot frame is a reading from a sensor on a shared clock, taken a moment after the policy moved the arm, so the data already depends on the policy that collected it (leader session 1). And the identity of that frame is not a customer id: it is everything that would make the same frame mean something different.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 326" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn before and after for the source. Left, the warehouse: one order row with order id 4471, customer C-0932, 2 items, 09:14; a person clicked buy and the row records it without causing it. Right, the robot: three sensor lanes, camera 1, camera 2 and joints, hatched as data on one clock, and a marigold box, policy v3, whose actions feed back into the next frames. The unit is a time window of one policy's run, not one event.">
+        <defs>
+          <filter id="wrna5aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="51" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna5aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna5aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna5aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna5aK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrna5aA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrna5aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna5aH" x="30" y="30">THE SOURCE: WHO WROTE THE ROW?</text>
+
+        <g filter="url(#wrna5aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="48" width="400" height="214" rx="10" transform="rotate(-0.4 230 155)" fill="#FFFFFF"/>
+          <rect x="450" y="48" width="400" height="214" rx="10" transform="rotate(0.4 650 155)" fill="#FCEFF7"/>
+          <rect x="46" y="92" width="368" height="24" rx="3" fill="#FCEFF7"/>
+          <rect x="46" y="116" width="368" height="26" rx="3" fill="url(#wrna5aHc)"/>
+          <path d="M138 92 L138 142 M246 92 L246 142 M326 92 L326 142"/>
+          <rect x="540" y="90" width="290" height="14" rx="3" fill="url(#wrna5aHc)"/>
+          <rect x="540" y="112" width="290" height="14" rx="3" fill="url(#wrna5aHc)"/>
+          <rect x="540" y="134" width="290" height="14" rx="3" fill="url(#wrna5aHc)"/>
+          <rect x="540" y="168" width="130" height="34" rx="6" transform="rotate(-0.6 605 185)" fill="#F4B63C"/>
+          <path d="M672 185 L780 185 L780 152" marker-end="url(#wrna5aAr)"/>
+          <!-- doodle: a camera -->
+          <rect x="806" y="18" width="28" height="18" rx="3" fill="#FFFFFF"/>
+          <circle cx="820" cy="27" r="5" stroke="#B5338B"/>
+        </g>
+
+        <text class="wrna5aL" x="46" y="74">Warehouse: an event someone meant</text>
+        <text class="wrna5aS" x="54" y="108">order_id</text>
+        <text class="wrna5aS" x="146" y="108">customer_id</text>
+        <text class="wrna5aS" x="254" y="108">items</text>
+        <text class="wrna5aS" x="334" y="108">time</text>
+        <text class="wrna5aK" x="54" y="134">4471</text>
+        <text class="wrna5aK" x="146" y="134">C-0932</text>
+        <text class="wrna5aK" x="254" y="134">2</text>
+        <text class="wrna5aK" x="334" y="134">09:14</text>
+        <text class="wrna5aS" x="46" y="172">A person clicked buy at 09:14. The row records the</text>
+        <text class="wrna5aS" x="46" y="188">event; recording it changed nothing. Measured or not,</text>
+        <text class="wrna5aS" x="46" y="204">the order happens the same way.</text>
+        <text class="wrna5aL" x="46" y="240">Unit: one event, one key</text>
+
+        <text class="wrna5aL" x="466" y="74">Robot: sensors on one clock, steered by the policy</text>
+        <text class="wrna5aS" x="466" y="101">camera 1</text>
+        <text class="wrna5aS" x="466" y="123">camera 2</text>
+        <text class="wrna5aS" x="466" y="145">joints</text>
+        <text class="wrna5aK" x="556" y="190">policy v3</text>
+        <text class="wrna5aS" x="556" y="222">its actions shape the next frames</text>
+        <text class="wrna5aL" x="466" y="248">Unit: a time window of one policy's run</text>
+
+        <text class="wrna5aN" x="30" y="292">Constructed sketch. A warehouse row records the world; a robot frame records the world just after</text>
+        <text class="wrna5aN" x="30" y="310">the policy acted on it, so the same table under policy v4 would hold different frames.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold box is the hidden author: the policy decides what the cameras get to see next.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The source: sensors, a clock, and a policy in the loop<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A warehouse source is a system of record: something happened, a system wrote it down. The right questions are about completeness and latency. A robot source is a set of sensors sampled on one clock: cameras, joint encoders, the commands sent to the arm. The right questions are about alignment (are the frames from the same instant?) and about authorship: which policy was steering when these frames were taken?</p>
+        <p>That second question has no warehouse equivalent. If policy v3 tends to approach parcels from the left, the dataset holds many left approaches and few right ones, not because the world is like that but because v3 is. Leader session 1 called this the loop feeding on itself. For the data team it means a dataset always carries a policy tag, and a sample statistic is a statistic of that policy's behaviour.</p>
+        <p>Clocks, sampling rates and resampling sensor streams are their own discipline; <a href="https://phoebefu6.github.io/learn-iot-data-with-phoebe/">learn IoT data</a> owns them.</p>
+      </div>
+    </details>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 364" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn before and after for identity. Left, the warehouse: one key, customer id C-0932, joins to every order that customer made. Right, the robot: an episode's identity is a bundle of six tags, robot, calibration file highlighted in marigold, policy version, operator or scene, success rule version and software build. Below, constructed bench evidence: one camera moved 2 cm and not recorded takes Wrenfield from 49 of 50 to 0 of 50. Note: Open X-Embodiment, 60 datasets from 22 robot types, coordinate frames not aligned.">
+        <defs>
+          <filter id="wrna5bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="53" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna5bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna5bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna5bH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna5bK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrna5bV { font: 800 16px Inter, sans-serif; fill: #6B0546; }
+          .wrna5bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna5bH" x="30" y="30">THE IDENTITY: WHAT MAKES TWO ROWS THE SAME?</text>
+
+        <g filter="url(#wrna5bSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="48" width="400" height="214" rx="10" transform="rotate(0.4 230 155)" fill="#FFFFFF"/>
+          <rect x="450" y="48" width="400" height="214" rx="10" transform="rotate(-0.4 650 155)" fill="#FCEFF7"/>
+          <rect x="56" y="98" width="150" height="44" rx="6" transform="rotate(-0.6 131 120)" fill="#FFFFFF"/>
+          <path d="M210 120 L282 120" marker-end="url(#wrna5bAr)"/>
+          <rect x="288" y="98" width="124" height="44" rx="6" transform="rotate(0.5 350 120)" fill="url(#wrna5bHc)"/>
+          <rect x="466" y="92" width="180" height="30" rx="5" transform="rotate(-0.5 556 107)" fill="#FFFFFF"/>
+          <rect x="656" y="92" width="180" height="30" rx="5" transform="rotate(0.5 746 107)" fill="#F4B63C"/>
+          <rect x="466" y="130" width="180" height="30" rx="5" transform="rotate(0.4 556 145)" fill="#FFFFFF"/>
+          <rect x="656" y="130" width="180" height="30" rx="5" transform="rotate(-0.4 746 145)" fill="#FFFFFF"/>
+          <rect x="466" y="168" width="180" height="30" rx="5" transform="rotate(-0.4 556 183)" fill="#FFFFFF"/>
+          <rect x="656" y="168" width="180" height="30" rx="5" transform="rotate(0.5 746 183)" fill="#FFFFFF"/>
+          <path d="M116 300 L160 300" marker-end="url(#wrna5bAr)"/>
+          <!-- doodle: a camera nudged sideways -->
+          <rect x="800" y="16" width="28" height="18" rx="3" fill="#FFFFFF"/>
+          <path d="M834 25 L848 25" stroke="#B5338B"/>
+        </g>
+
+        <text class="wrna5bL" x="46" y="74">Warehouse: one key joins everything</text>
+        <text class="wrna5bL" x="70" y="118">customer_id</text>
+        <text class="wrna5bS" x="70" y="134">C-0932</text>
+        <text class="wrna5bK" x="300" y="124">every order</text>
+        <text class="wrna5bS" x="46" y="184">Two rows with the same key are the same</text>
+        <text class="wrna5bS" x="46" y="200">customer. Nothing else about the row has to</text>
+        <text class="wrna5bS" x="46" y="216">match for the join to be right.</text>
+
+        <text class="wrna5bL" x="466" y="74">Robot: an episode's identity is a bundle</text>
+        <text class="wrna5bL" x="478" y="112">robot (which arm)</text>
+        <text class="wrna5bL" x="668" y="112">calibration file</text>
+        <text class="wrna5bL" x="478" y="150">policy version</text>
+        <text class="wrna5bL" x="668" y="150">operator or scene</text>
+        <text class="wrna5bL" x="478" y="188">success rule version</text>
+        <text class="wrna5bL" x="668" y="188">software build</text>
+        <text class="wrna5bS" x="466" y="224">Change any one and two episodes with the same id</text>
+        <text class="wrna5bS" x="466" y="240">are no longer the same experiment.</text>
+
+        <text class="wrna5bV" x="30" y="306">49 of 50</text>
+        <text class="wrna5bV" x="168" y="306">0 of 50</text>
+        <text class="wrna5bL" x="256" y="298">one camera moved 2 cm, never written to the calibration file</text>
+        <text class="wrna5bS" x="256" y="314">constructed: Wrenfield's bench, rung 4 and its break button (practitioner session 10)</text>
+        <text class="wrna5bN" x="30" y="346">Open X-Embodiment (2023): 60 datasets from 22 robot types; coordinate frames not aligned across them.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold tag is the one most often missing from the key, and the bench shows what its absence costs.</figcaption>
+    </figure>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The identity: a bundle, not a key<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Practitioner session 1 lists what an episode needs beside its frames: the robot, the calibration, the policy or the operator who drove it, the scene, the success rule and the software version. In a warehouse those would be "metadata", nice to have. Here they are part of the identity, because changing any one of them changes what the frames mean.</p>
+        <p>Wrenfield's bench makes the point brutally. Its best policy (constructed) grasps 49 of 50 real parcels. Move one camera 2 cm and do not record it, and the same policy grasps 0 of 50. Nothing in the episode table changed: same robot id, same policy version, same columns. Only the calibration, which was not in the key, was wrong.</p>
+        <p>The replacement for "primary key" is a composite identity that every episode carries, and a rule that two episodes are comparable only when the parts you care about match.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>When the scene is part of the identity<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Kress-Gazit and colleagues (2024) give an example that would never happen to a warehouse table. A policy evaluated at 13 of 20 was re-run on the same initial conditions after the lab was reorganized, and scored 0 of 8. Same policy, same robot, same task; the room had changed around it.</p>
+        <p>The lesson for identity is that "scene" is not a free-text note. It is the thing that lets you say whether two numbers were measured in the same world. The authors recommend matching initial conditions with image overlays or markings, which is the robot version of pinning a snapshot date on a report.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers the ground truth and the feedback loop</span>
+      <h2>Who says it worked, and what the policy chose to show you</h2>
+      <span class="tag concept">9 min live</span>
+    </div>
+    <p class="lede">The next two mechanisms are where warehouse statistics quietly stop applying. A warehouse label is usually a fact a system recorded; a robot success flag is a decision a person made by a rule. And a warehouse report does not change which orders arrive next week, while a new robot policy changes which situations get recorded at all.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn before and after for ground truth. Left, the warehouse: refund issued equals yes, written by the payment system, the same answer next year. Right, the robot: episode 812, hatched, goes to a marigold rule box with rule v1, lifted, and rule v2, upright in the tote. v1 says success and v2 says failure for the same episode. DROID collectors marked each episode success or failure and failures were kept out of policy training. A small flag is the doodle.">
+        <defs>
+          <filter id="wrna5cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="57" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna5cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna5cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna5cH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna5cK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrna5cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna5cH" x="30" y="30">THE GROUND TRUTH: WHO SAYS THE LABEL IS TRUE?</text>
+
+        <g filter="url(#wrna5cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="48" width="400" height="214" rx="10" transform="rotate(-0.4 230 155)" fill="#FFFFFF"/>
+          <rect x="450" y="48" width="400" height="214" rx="10" transform="rotate(0.4 650 155)" fill="#FCEFF7"/>
+          <rect x="56" y="98" width="230" height="40" rx="6" transform="rotate(0.5 171 118)" fill="url(#wrna5cHc)"/>
+          <rect x="466" y="92" width="110" height="36" rx="5" transform="rotate(-0.6 521 110)" fill="url(#wrna5cHc)"/>
+          <path d="M578 110 L604 110" marker-end="url(#wrna5cAr)"/>
+          <rect x="608" y="88" width="160" height="44" rx="6" transform="rotate(0.5 688 110)" fill="#F4B63C"/>
+          <path d="M770 110 L790 110" marker-end="url(#wrna5cAr)"/>
+          <!-- doodle: a success flag -->
+          <path d="M800 128 L800 92 L830 100 L800 108" stroke="#B5338B"/>
+        </g>
+
+        <text class="wrna5cL" x="46" y="74">Warehouse: the label is a recorded fact</text>
+        <text class="wrna5cK" x="70" y="123">refund_issued = yes</text>
+        <text class="wrna5cS" x="46" y="172">The payment system wrote it when it happened.</text>
+        <text class="wrna5cS" x="46" y="188">No one judged it, and re-running the query gives</text>
+        <text class="wrna5cS" x="46" y="204">the same answer next year.</text>
+
+        <text class="wrna5cL" x="466" y="74">Robot: a person applies a written rule</text>
+        <text class="wrna5cK" x="476" y="114">episode 812</text>
+        <text class="wrna5cL" x="620" y="106">rule v1: lifted</text>
+        <text class="wrna5cK" x="620" y="123">rule v2: upright</text>
+        <text class="wrna5cS" x="608" y="156">v1 says success, v2 says failure:</text>
+        <text class="wrna5cS" x="608" y="172">same episode, two labels.</text>
+        <text class="wrna5cS" x="466" y="206">DROID (2024): collectors marked each episode success</text>
+        <text class="wrna5cS" x="466" y="222">or failure; failures were kept out of policy training.</text>
+        <text class="wrna5cL" x="466" y="248">The flag is a decision, so version the rule.</text>
+
+        <text class="wrna5cN" x="30" y="294">Kress-Gazit et al. (2024) ask for a clear, detailed, unambiguous definition of success, written by</text>
+        <text class="wrna5cN" x="30" y="312">the behaviour's designer and applied by someone else. Episode 812 and both rules are constructed.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold box is the ground truth: not the episode, but the rule somebody applied to it.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Ground truth is a person applying a rule<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>In DROID, Khazatsky and colleagues (2024) built a large in-the-wild dataset: about 76,000 demonstration trajectories, roughly 350 hours, 564 scenes, 50 data collectors over 12 months. Each collector marked each episode a success or a failure. About 16,000 unsuccessful trajectories were released separately, and failed episodes were excluded from policy training. That is a sound protocol, and it means the training set is filtered by 50 people's reading of "success".</p>
+        <p>Kress-Gazit and colleagues (2024) treat the definition as an engineering artefact: clear, detailed and unambiguous, written by whoever designed the behaviour, applied by someone who did not. For a data team the practical consequence is simple. The success flag needs a rule version beside it, exactly as a metric needs a definition version, because changing the rule relabels history.</p>
+      </div>
+    </details>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 342" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn before and after for the feedback loop. Left, the warehouse: this week's orders, hatched, feed a weekly report; reading the rows does not change which orders arrive next week. Right, the robot: a top view of the bench under policy v1, whose episodes, hatched, cover only the centre. An arrow leads to the bench under policy v2, which reaches the left edge, highlighted in marigold, a region not in v1's data. Three small circles mark takeovers, logged only where someone was watching.">
+        <defs>
+          <filter id="wrna5dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="59" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna5dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna5dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna5dH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5dL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5dS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna5dK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrna5dN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna5dH" x="30" y="30">THE FEEDBACK LOOP: DOES THE MODEL PICK ITS OWN DATA?</text>
+
+        <g filter="url(#wrna5dSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="48" width="400" height="224" rx="10" transform="rotate(0.4 230 160)" fill="#FFFFFF"/>
+          <rect x="450" y="48" width="400" height="224" rx="10" transform="rotate(-0.4 650 160)" fill="#FCEFF7"/>
+          <rect x="56" y="100" width="150" height="50" rx="6" transform="rotate(-0.5 131 125)" fill="url(#wrna5dHc)"/>
+          <path d="M210 125 L270 125" marker-end="url(#wrna5dAr)"/>
+          <rect x="276" y="100" width="130" height="50" rx="6" transform="rotate(0.5 341 125)" fill="#FFFFFF"/>
+          <rect x="466" y="92" width="170" height="100" rx="6" transform="rotate(-0.5 551 142)" fill="#FFFFFF"/>
+          <rect x="506" y="112" width="90" height="60" rx="4" fill="url(#wrna5dHc)"/>
+          <path d="M640 142 L660 142" marker-end="url(#wrna5dAr)"/>
+          <rect x="664" y="92" width="170" height="100" rx="6" transform="rotate(0.5 749 142)" fill="#FFFFFF"/>
+          <rect x="672" y="100" width="34" height="84" rx="4" fill="#F4B63C"/>
+          <circle cx="796" cy="118" r="5"/>
+          <circle cx="812" cy="146" r="5"/>
+          <circle cx="792" cy="168" r="5"/>
+          <!-- doodle: a two-finger gripper -->
+          <path d="M800 32 L800 18 M790 18 L810 18 M790 18 L790 36 M810 18 L810 36" stroke="#B5338B" stroke-width="2.5"/>
+        </g>
+
+        <text class="wrna5dL" x="46" y="74">Warehouse: the report does not pick the orders</text>
+        <text class="wrna5dK" x="68" y="122">orders this week</text>
+        <text class="wrna5dL" x="290" y="130">weekly report</text>
+        <text class="wrna5dS" x="46" y="186">Reading the rows does not change which orders</text>
+        <text class="wrna5dS" x="46" y="202">arrive next week, so last month is a fair sample</text>
+        <text class="wrna5dS" x="46" y="218">of next month for most questions.</text>
+
+        <text class="wrna5dL" x="466" y="74">Robot: the policy chooses what gets visited</text>
+        <text class="wrna5dS" x="466" y="210">v1's episodes: centre only</text>
+        <text class="wrna5dS" x="664" y="210">v2 reaches the edge</text>
+        <text class="wrna5dS" x="466" y="236">Data from v2 is a different sample, not more of the same.</text>
+        <text class="wrna5dS" x="466" y="252">Circles: takeovers, logged only where someone watched.</text>
+
+        <text class="wrna5dN" x="30" y="304">Constructed sketch. Change the policy and you change which situations get recorded, so pooling v1 and</text>
+        <text class="wrna5dN" x="30" y="322">v2 episodes mixes two samples. Practitioner session 8 reads takeovers as labels, selection bias included.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold strip is data that did not exist until the policy changed; nothing in v1's set could have warned you about it.</figcaption>
+    </figure>
+
+    <div class="wk" id="wrna5-pair">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">Pick a mechanism. The table shows the warehouse assumption, what breaks at a robot cell, and what to do instead. The text is written into the page; nothing is computed. Wrenfield examples are constructed.</span>
+      </div>
+      <div class="wk-body">
+        <label class="sql-label" for="wrna5-pick">Mechanism</label>
+        <select class="sql-code" id="wrna5-pick"></select>
+        <div id="wrna5-out"></div>
+        <p class="sql-note" id="wrna5-verdict">...</p>
+      </div>
+      <div class="wk-foot" id="wrna5-self">Static comparison table, the same for every reader. Research is cited by author and year; Wrenfield numbers are constructed.</div>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The feedback loop: each policy is a new sample<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A warehouse forecast trained on last year predicts next year reasonably because the forecast does not choose next year's customers. A robot policy does choose its own situations: where the arm goes, which grasps it attempts, how often it ends up near the edge of the bench. Ship policy v2 and the episodes it collects describe v2's world, which may include places v1 never went.</p>
+        <p>Two practical consequences. First, an evaluation of v1 says little about the situations v2 will create; the comparison must be run under matched initial conditions (leader session 3). Second, pooling episodes across policy versions mixes samples, so every training set needs the policy mix written down, like a sampling frame.</p>
+        <p>Interventions make the loop subtler. A person takes over only where a person noticed something; the intervention log is a valuable label and a biased one, and practitioner session 8 treats it that way. <a href="https://phoebefu6.github.io/learn-autonomous-driving-with-phoebe/">Learn autonomous driving</a> covers the fleet-scale version, disengagements.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Where the label filter and the loop meet<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Put DROID's protocol and the feedback loop together and a subtle effect appears. Training only on successes is a sound default, and it also means the model never sees the situations where people failed. If the next policy then visits more of those situations, the data that would have taught it is exactly the data that was set aside.</p>
+        <p>This is not a criticism of the dataset, which released its failures separately so others can study them. It is a reason for a data team to keep failures, label them by rule version, and decide on purpose what is excluded, rather than let the filter be an accident of collection.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers the cost of being wrong</span>
+      <h2>A wrong row is corrected next week; a wrong action moves an arm</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">The last mechanism changes what "good enough" means. A wrong number in a warehouse report costs a correction note. A wrong action at a robot cell moves metal, sometimes in a space a person shares. That asymmetry belongs in the evaluation itself: where people were during the trials, how often the robot stopped itself, and which errors happened close to someone.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn before and after for the cost of being wrong. Left, data: a report with one wrong cell, hatched, found on Monday, corrected and reissued; nothing moved in the world. Right, the robot: top view of an arm base with its reach, hatched, overlapping a person's zone, highlighted in marigold; an arrow leads to a stop log reading 14:02 protective stop. Each stop is a logged event with a cost. Note: ISO/TS 15066 and the 2025 ISO 10218 revision, reported, no limit values, not legal advice.">
+        <defs>
+          <filter id="wrna5eSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="61" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna5eHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna5eAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna5eH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5eL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5eS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna5eK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrna5eN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna5eH" x="30" y="30">THE COST OF BEING WRONG: WHAT DOES A MISTAKE MOVE?</text>
+
+        <g filter="url(#wrna5eSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="48" width="400" height="230" rx="10" transform="rotate(-0.4 230 163)" fill="#FFFFFF"/>
+          <rect x="450" y="48" width="400" height="230" rx="10" transform="rotate(0.4 650 163)" fill="#FCEFF7"/>
+          <rect x="56" y="96" width="200" height="110" rx="6" transform="rotate(0.5 156 151)" fill="#FFFFFF"/>
+          <path d="M72 120 L240 120 M72 144 L240 144 M72 168 L240 168 M72 192 L240 192"/>
+          <rect x="150" y="148" width="70" height="16" rx="2" fill="url(#wrna5eHc)"/>
+          <circle cx="540" cy="160" r="70" fill="url(#wrna5eHc)"/>
+          <rect x="590" y="110" width="50" height="70" rx="6" transform="rotate(-0.6 615 145)" fill="#F4B63C"/>
+          <circle cx="540" cy="160" r="12" fill="#FFFFFF"/>
+          <!-- doodle: the arm, base to gripper -->
+          <path d="M548 152 L584 132 L604 140 M604 140 L612 132 M604 140 L612 148" stroke="#6B0546" stroke-width="2.5"/>
+          <path d="M642 168 L662 186" marker-end="url(#wrna5eAr)"/>
+          <rect x="666" y="178" width="172" height="50" rx="6" transform="rotate(-0.5 752 203)" fill="#FFFFFF"/>
+        </g>
+
+        <text class="wrna5eL" x="46" y="74">Data: a wrong row in a report</text>
+        <text class="wrna5eS" x="276" y="140">found on Monday,</text>
+        <text class="wrna5eS" x="276" y="156">corrected, reissued</text>
+        <text class="wrna5eS" x="46" y="240">Cost: a correction note and a re-run.</text>
+        <text class="wrna5eS" x="46" y="256">Nothing moved in the world.</text>
+
+        <text class="wrna5eL" x="466" y="74">Robot: a wrong action moves an arm</text>
+        <text class="wrna5eL" x="650" y="126">person's zone</text>
+        <text class="wrna5eS" x="650" y="142">shared space</text>
+        <text class="wrna5eL" x="678" y="198">stop log</text>
+        <text class="wrna5eS" x="678" y="216">14:02 protective stop</text>
+        <text class="wrna5eS" x="466" y="250">Each stop is a logged event with a cost: lost cycle</text>
+        <text class="wrna5eS" x="466" y="266">time now, and a near miss worth counting.</text>
+
+        <text class="wrna5eN" x="30" y="306">Reported: ISO/TS 15066:2016 tabulates per-body-region contact limits set from pain-onset thresholds,</text>
+        <text class="wrna5eN" x="30" y="324">described as preliminary; the 2025 ISO 10218 revision consolidates that content. Not legal advice.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold zone is why robot evaluation counts where people were, not only how many grasps succeeded.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What the standards describe, as reported<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Robots that share space with people are governed by standards, and a data leader should know their shape, not their numbers. As reported (the documents are paywalled and were not read here): ISO/TS 15066:2016 describes power and force limiting as one of four collaborative operation modes, with maximum contact force and pressure tabulated per body region, set from pain-onset thresholds and described as preliminary. ISO 10218-1 and -2 were revised in 2025, and that collaborative content is reported to be consolidated into Part 1. Re-check the current catalogue before relying on any of this.</p>
+        <p>Nothing on this page is legal advice or a compliance checklist. The point for a data team is what those mechanisms produce: stops, slow-downs and force-limit trips, each one a timestamped event in a log someone should be reading.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>Behrens and colleagues (2022), reported from the abstract, ran a study with 112 subjects toward replacing those preliminary values, and found that pain thresholds differ between men and women in some body regions. Even the limits themselves are still being measured; a safety threshold is evidence with a sample behind it, like everything else here.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The data consequence: asymmetric cost changes evaluation<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Errors are not equal.</strong> A failed grasp at the far side of the bench costs a reset. The same failure while a person reaches into the tote costs something else entirely. A single success rate averages those together, which is why evaluation has to record where people were during each trial (practitioner session 9).</p>
+        <p><strong>Stops are data, not noise.</strong> Protective stops are logged events. A stop rate needs a denominator, per hour of shared operation or per pick, or it cannot be compared across weeks or cells.</p>
+        <p><strong>The fix is not next week's report.</strong> In a warehouse you can ship, watch and correct. Near people, the evidence has to come before the change, which pushes more weight onto the small, careful evaluations of leader session 3.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Where serious people disagree<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>How much of the warehouse playbook needs rewriting is itself contested. One view holds that pooling ever-larger robot datasets will wash out per-robot quirks, the way large text corpora washed out per-source quirks. Open X-Embodiment (2023) supports half of that: pooled training helped on small-data robots (a 50 percent higher mean success) and underfit on the large-data ones at the model size tested.</p>
+        <p>The other view holds that identity, calibration and success rules will always need per-cell care, because the world does not normalize. Both views are held by serious people. A leader's safe position is to fund the bookkeeping either way: it is cheap, and every later decision depends on it.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ BUILD-ALONG ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Run one warehouse project through the five mechanisms</h2>
+      <span class="tag demo">★ 17 min · everyone builds</span>
+    </div>
+    <p class="lede">No code. Pick one data project you have run or overseen in a warehouse, retail or operations setting: a demand forecast, a pick-rate dashboard, a returns classifier. Imagine handing its playbook to a robotics team. For each of the five mechanisms, write the assumption your project made, what breaks at a robot cell, and what replaces it. The figure shows the worksheet with one row filled in for Wrenfield.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 404" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn worksheet with five rows, one per mechanism: source, identity, ground truth, feedback loop, cost of being wrong, and three columns: mechanism, what your project assumed, what breaks and what replaces it. The identity row is filled in marigold for constructed Wrenfield: each episode keyed by id only, the calibration file lived in a folder; replaced by a bundle of robot, calibration, policy, rule and build recorded in every episode, with an alarm when a camera moves. Below, the day-one question.">
+        <defs>
+          <filter id="wrna5fSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="67" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna5fHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna5fAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna5fH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5fL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna5fS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna5fK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrna5fN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna5fH" x="30" y="30">FIVE MECHANISMS, ONE PROJECT</text>
+
+        <g filter="url(#wrna5fSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="46" width="150" height="30" rx="4" fill="#FCEFF7"/>
+          <rect x="190" y="46" width="320" height="30" rx="4" fill="#FCEFF7"/>
+          <rect x="520" y="46" width="330" height="30" rx="4" fill="#FCEFF7"/>
+          <rect x="30" y="84" width="150" height="40" rx="4" transform="rotate(-0.3 105 104)" fill="#FFFFFF"/>
+          <rect x="190" y="84" width="320" height="40" rx="4" transform="rotate(0.2 350 104)" fill="#FFFFFF"/>
+          <rect x="520" y="84" width="330" height="40" rx="4" transform="rotate(-0.2 685 104)" fill="#FFFFFF"/>
+          <rect x="30" y="130" width="150" height="40" rx="4" transform="rotate(0.3 105 150)" fill="#F4B63C"/>
+          <rect x="190" y="130" width="320" height="40" rx="4" transform="rotate(-0.2 350 150)" fill="#F4B63C"/>
+          <rect x="520" y="130" width="330" height="40" rx="4" transform="rotate(0.2 685 150)" fill="#F4B63C"/>
+          <rect x="30" y="176" width="150" height="40" rx="4" transform="rotate(-0.3 105 196)" fill="#FFFFFF"/>
+          <rect x="190" y="176" width="320" height="40" rx="4" transform="rotate(0.2 350 196)" fill="#FFFFFF"/>
+          <rect x="520" y="176" width="330" height="40" rx="4" transform="rotate(-0.2 685 196)" fill="#FFFFFF"/>
+          <rect x="30" y="222" width="150" height="40" rx="4" transform="rotate(0.3 105 242)" fill="#FFFFFF"/>
+          <rect x="190" y="222" width="320" height="40" rx="4" transform="rotate(-0.2 350 242)" fill="#FFFFFF"/>
+          <rect x="520" y="222" width="330" height="40" rx="4" transform="rotate(0.2 685 242)" fill="#FFFFFF"/>
+          <rect x="30" y="268" width="150" height="40" rx="4" transform="rotate(-0.3 105 288)" fill="#FFFFFF"/>
+          <rect x="190" y="268" width="320" height="40" rx="4" transform="rotate(0.2 350 288)" fill="#FFFFFF"/>
+          <rect x="520" y="268" width="330" height="40" rx="4" transform="rotate(-0.2 685 288)" fill="#FFFFFF"/>
+          <rect x="30" y="322" width="820" height="38" rx="8" transform="rotate(-0.2 440 341)" fill="#FCEFF7"/>
+          <!-- doodle: a pencil -->
+          <path d="M812 30 L840 16 L846 24 L818 38 Z M812 30 L808 40 L818 38" stroke="#B5338B"/>
+        </g>
+
+        <text class="wrna5fL" x="42" y="66">Mechanism</text>
+        <text class="wrna5fL" x="202" y="66">What your project assumed</text>
+        <text class="wrna5fL" x="532" y="66">What breaks, and what replaces it</text>
+
+        <text class="wrna5fL" x="42" y="109">1 Source</text>
+        <text class="wrna5fS" x="202" y="109">your project</text>
+        <text class="wrna5fS" x="532" y="109">your answer</text>
+
+        <text class="wrna5fL" x="42" y="155">2 Identity</text>
+        <text class="wrna5fK" x="202" y="146">Wrenfield (constructed): each episode keyed</text>
+        <text class="wrna5fK" x="202" y="162">by id only; the calibration lived in a folder</text>
+        <text class="wrna5fK" x="532" y="146">Bundle: robot, calibration, policy, rule, build,</text>
+        <text class="wrna5fK" x="532" y="162">in every episode; alarm when a camera moves</text>
+
+        <text class="wrna5fL" x="42" y="201">3 Ground truth</text>
+        <text class="wrna5fS" x="202" y="201">your project</text>
+        <text class="wrna5fS" x="532" y="201">your answer</text>
+
+        <text class="wrna5fL" x="42" y="247">4 Feedback loop</text>
+        <text class="wrna5fS" x="202" y="247">your project</text>
+        <text class="wrna5fS" x="532" y="247">your answer</text>
+
+        <text class="wrna5fL" x="42" y="293">5 Cost of wrong</text>
+        <text class="wrna5fS" x="202" y="293">your project</text>
+        <text class="wrna5fS" x="532" y="293">your answer</text>
+
+        <text class="wrna5fL" x="46" y="346">Day-one question: for any episode, can you name the robot, calibration, policy and success rule behind it?</text>
+
+        <text class="wrna5fN" x="30" y="388">Wrenfield's row is constructed. Fill the four white rows from a project you have run.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold row is the one Wrenfield learned the hard way; your worksheet will have its own marigold row.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Name the project and its decision</h4>
+        <p>One line: what the project measured and what decision it fed. "Weekly pick-rate per picker, used to plan shifts." Keep it real and specific; a vague project produces a vague worksheet.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Source and identity</h4>
+        <p>Write who or what produced each row, and what made two rows the same. Then ask the robot version: which policy was steering when the data was taken, and which of robot, calibration, policy, operator, scene, success rule and software would have to match for two records to be comparable?</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Ground truth</h4>
+        <p>Write where your labels came from. If a system recorded them, write "fact". If a person decided, write the rule they used and whether it was versioned. At a robot cell, assume a person decided, and write the rule version you would require.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Feedback loop</h4>
+        <p>Did your project's output change the data it would see next? A pick-rate dashboard usually does not; a slotting optimizer that moves stock does. At a robot cell, assume it always does, and write how you would label which policy collected each episode.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Cost of being wrong</h4>
+        <p>Write what a wrong number cost in your project and how fast it was corrected. Then write what the robot version would need recorded during evaluation: where people were, stops per hour of shared operation, errors near someone.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Write your day-one question</h4>
+        <p>Look at the five rows and pick the one where your project's assumption would fail most quietly. Turn it into one question to ask a robotics team on day one. Wrenfield's analyst would ask: "for any episode, can you name the robot, calibration, policy and success rule behind it?"</p>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> When a robotics team hands you a dataset, do not start with the schema. Start with five questions: who steered while it was recorded, what makes two episodes the same, which rule set each success flag, which policy versions are mixed in, and where people were when it went wrong.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">Why is a robot dataset a sample of the policy that collected it, rather than a sample of the world?</p>
+      <button class="qopt" type="button">A · Because robot sensors are noisier than warehouse systems</button>
+      <button class="qopt" type="button">B · Because robots log data at a fixed rate</button>
+      <button class="qopt" type="button">C · Because the policy's own actions decided which situations the cameras and joints recorded next, so a different policy would have produced different episodes</button>
+      <p class="qwhy">The policy is in the loop. A warehouse row records an event that would have happened anyway; a robot episode records what one policy did and what followed, so every dataset needs its policy mix written down.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">Why does a robot success flag need a versioned rule beside it?</p>
+      <button class="qopt" type="button">A · Because the flag is a person's judgement by a written rule, and changing the rule relabels the same episodes</button>
+      <button class="qopt" type="button">B · Because flags are stored in a separate table</button>
+      <button class="qopt" type="button">C · Because the robot sets the flag itself and may drift</button>
+      <p class="qwhy">In DROID (Khazatsky et al. 2024) collectors marked each episode success or failure, and failures were kept out of training. Kress-Gazit et al. (2024) ask for a clear, detailed, unambiguous definition applied by someone other than its author. Change the rule and history changes.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">How does the cost of being wrong change how a robot policy is evaluated?</p>
+      <button class="qopt" type="button">A · It does not; a success rate is enough</button>
+      <button class="qopt" type="button">B · Errors near people cost far more than errors far from them, so evaluation records where people were and counts stops with a denominator, and the evidence must come before the change</button>
+      <button class="qopt" type="button">C · It means quoting the force limits from the standard in every report</button>
+      <p class="qwhy">A wrong row is corrected next week; a wrong action moves an arm. Protective stops are logged events, and a stop rate needs a denominator such as hours of shared operation. Per-region limits are in paywalled standards, reported here, and are not quoted on this page.</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">Before session 6</span>
+      <h2>Homework</h2>
+    </div>
+    <p class="lede">Twenty minutes, on your worksheet and one real dataset description.</p>
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Finish the worksheet</h4>
+        <p>Complete all five rows for your project, then mark each row "carries over", "must learn" or "must unlearn". Leader session 6 builds the transfer map from exactly those three words.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Read one dataset description for identity</h4>
+        <p>Pick any public robot dataset's documentation and list which parts of the identity bundle it records: robot, calibration, policy or operator, scene, success rule, software. Note which are missing; do not judge the dataset, just mark the gaps.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Source and identity</span><span class="note">Open X-Embodiment Collaboration (2023), arXiv 2310.08864: 60 datasets, 22 robot types, frames not aligned, camera views vary. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Ground truth is a rule a person applies</span><span class="note">Kress-Gazit et al. (2024), arXiv 2409.09491: unambiguous success definition, designer is not evaluator; 13/20 to 0/8 after a lab reorganization. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Success marking and excluded failures</span><span class="note">Khazatsky et al. (2024), DROID, arXiv 2403.12945: 76k trajectories, 50 collectors, about 16k failures released separately. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The unrecorded camera move</span><span class="note">Constructed: Wrenfield's bench, 49 of 50 to 0 of 50 after a 2 cm move not written to the calibration file.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The feedback loop</span><span class="note">A new policy is a new sample; interventions happen only where someone noticed. Practitioner session 8 goes deeper.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Collaborative robot standards</span><span class="note">ISO/TS 15066:2016 and ISO 10218-1 and -2 (2025), reported; Behrens et al. (2022), reported. No limit values quoted; not legal advice. Practitioner session 9.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">The same session for autonomous driving</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-autonomous-driving-with-phoebe/courses/a5-why-the-warehouse-playbook-breaks-here.html">learn autonomous driving, leader session 5</a>.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">The same session for IoT data</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-iot-data-with-phoebe/courses/a5-why-the-warehouse-playbook-breaks-here.html">learn IoT data, leader session 5</a>.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Real companies, robots or products</span><span class="note">Out of scope by design. Wrenfield is constructed; nothing here is investment advice or a view on any company.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>The one sentence.</strong> Five warehouse defaults flip at a robot cell, and each needs a named replacement.</div>
+      <div class="cheat-item"><strong>Source.</strong> Sensors on one clock, steered by the policy. Tag every episode with the policy that collected it.</div>
+      <div class="cheat-item"><strong>Identity.</strong> Robot, calibration, policy or operator, scene, success rule, software. Not one key.</div>
+      <div class="cheat-item"><strong>The 2 cm lesson.</strong> Wrenfield (constructed): 49 of 50 to 0 of 50 from an unrecorded camera move.</div>
+      <div class="cheat-item"><strong>Ground truth.</strong> A person applied a rule. Version the rule; keep the failures.</div>
+      <div class="cheat-item"><strong>Feedback loop.</strong> A new policy is a new sample. Interventions happen only where someone looked.</div>
+      <div class="cheat-item"><strong>Cost of being wrong.</strong> Record where people were; count stops per hour of shared operation. Not legal advice.</div>
+      <div class="cheat-item"><strong>Day-one question.</strong> For any episode, can you name the robot, calibration, policy and success rule behind it?</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>From warehouse to physical AI: the transfer map.</strong> What carries over, what you must learn and what you must unlearn, and a 90-day ladder of free, primary sources to climb it.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Leader session 5 of 6 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="a4-reading-a-robot-demo-claim.html">← Prev: Reading a robot demo claim</a>
+        <a href="a6-from-warehouse-to-physical-ai.html">Next: From warehouse to physical AI: the transfer map →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  var sel = document.getElementById("wrna5-pick");
+  var out = document.getElementById("wrna5-out");
+  var verdict = document.getElementById("wrna5-verdict");
+  if (!sel || !out || !verdict) return;
+  var rows = [
+    { name: "1 · The source",
+      rows: [
+        ["A row is an event someone meant; logging it changes nothing.", "Frames are sensor readings taken just after the policy acted, so the data depends on the policy that collected it.", "Tag every episode with the policy version that was steering; treat statistics as statistics of that policy."],
+        ["Sources arrive as tables with timestamps.", "Several cameras and joint streams must line up on one clock before any frame means anything.", "Check alignment first; leave clock and resampling detail to the IoT discipline."]
+      ],
+      note: "Leader session 1 drew the loop; practitioner session 1 is the episode anatomy." },
+    { name: "2 · The identity",
+      rows: [
+        ["One key, a customer or order id, joins everything.", "Two episodes with the same id can come from different calibrations, policies, scenes or success rules.", "Record the bundle in every episode: robot, calibration, policy or operator, scene, success rule, software."],
+        ["Metadata is nice to have.", "Wrenfield (constructed): a 2 cm camera move never written down takes 49 of 50 to 0 of 50.", "Alarm on calibration drift; compare episodes only when the parts that matter match."]
+      ],
+      note: "Open X-Embodiment (2023) pooled 60 datasets from 22 robot types without aligning coordinate frames." },
+    { name: "3 · The ground truth",
+      rows: [
+        ["Labels are facts a system recorded.", "A success flag is a person's judgement by a rule; another rule gives another label for the same episode.", "Write the rule, version it, store the version with each flag, and have someone other than its author apply it."],
+        ["Bad rows get filtered out.", "Excluding failures from training also hides the situations where people failed.", "Keep failures, labelled by rule version, and decide on purpose what is excluded."]
+      ],
+      note: "DROID (Khazatsky et al. 2024): collectors marked success or failure, failures kept out of training. Kress-Gazit et al. (2024) on success definitions." },
+    { name: "4 · The feedback loop",
+      rows: [
+        ["Last month is a fair sample of next month.", "A new policy visits new situations, so its data is a different sample, not more of the same.", "Write down the policy mix of every training set; compare policies under matched initial conditions."],
+        ["Every error shows up in the logs.", "Interventions are logged only where a person noticed something.", "Treat takeovers as useful, biased labels and record who was watching (practitioner session 8)."]
+      ],
+      note: "Kress-Gazit et al. (2024): 13 of 20 fell to 0 of 8 after a lab reorganization, the same policy in a shifted world." },
+    { name: "5 · The cost of being wrong",
+      rows: [
+        ["A wrong number is corrected in next week's report.", "A wrong action moves an arm, sometimes in a space a person shares.", "Evidence before the change: careful small evaluations, recorded before a policy goes near people."],
+        ["All errors count the same in the rate.", "A failure near a person costs far more than one at the far side of the bench.", "Record where people were; count protective stops per hour of shared operation or per pick (practitioner session 9)."]
+      ],
+      note: "ISO/TS 15066:2016 and ISO 10218 (2025) as reported; no limit values quoted. Not legal advice." }
+  ];
+  rows.forEach(function (r, i) {
+    var o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = r.name;
+    sel.appendChild(o);
+  });
+  function cell(tag, text) {
+    var c = document.createElement(tag);
+    c.textContent = text;
+    return c;
+  }
+  function render() {
+    var m = rows[Number(sel.value)];
+    var t = document.createElement("table");
+    t.className = "sql-table";
+    var thead = document.createElement("thead");
+    var hr = document.createElement("tr");
+    ["Warehouse assumption", "What breaks here", "What to do instead"].forEach(function (h) { hr.appendChild(cell("th", h)); });
+    thead.appendChild(hr);
+    t.appendChild(thead);
+    var tb = document.createElement("tbody");
+    m.rows.forEach(function (r) {
+      var tr = document.createElement("tr");
+      r.forEach(function (x) { tr.appendChild(cell("td", x)); });
+      tb.appendChild(tr);
+    });
+    t.appendChild(tb);
+    out.innerHTML = "";
+    out.appendChild(t);
+    verdict.textContent = m.note;
+  }
+  sel.addEventListener("change", render);
+  render();
+})();
+</script>
+<style>
+  #wrna5-pair .sql-code { border: 1px solid var(--hairline); border-radius: 8px; max-width: 24rem; }
+  #wrna5-pair table.sql-table { margin: .6rem 0 .2rem; font-size: .85rem; }
+  #wrna5-pair table.sql-table td { vertical-align: top; }
+</style>
+</body>
+</html>

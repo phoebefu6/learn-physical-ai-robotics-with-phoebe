@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Practitioner session 5 of 10. Actions as data: joint or end-effector, absolute or delta, position or velocity; why deltas drift and absolutes do not; normalisation statistics from the training split only; and action chunks, which took simulated success from 1 to 44 percent in Zhao et al. (2023). Build the round trip in numpy.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Actions as data - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Practitioner session 5 of 10. The action column is a design choice: its space, its reference, its scale and its length all change what the policy learns.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/p5-actions-as-data.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Actions as data - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="Absolute or delta, joint or end-effector, normalised on the train split, cut into chunks. Four choices that decide what a robot policy learns.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Practitioner session 5 · Actions as data - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Practitioner session 5 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Practitioner session 5 of 10</div>
+    <h1>Actions <span class="accent">as data</span></h1>
+    <p class="sub">In imitation learning the action column is the label, and it is not a given. Someone chose its space (joints or the gripper's position), its reference (an absolute target or a change from where the arm is), its scale (normalised with which statistics) and its length (one step or a chunk of many). Each choice changes what the policy can learn and how its mistakes add up. Tonight you take the column apart and put it back together. Wrenfield Lab and its trajectories are constructed; the research numbers are real and cited.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Working depth</span>
+      <span class="chip audience">ML engineers training robot policies</span>
+      <span class="chip audience">Data engineers who build the training loader</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:3">3-11 · What an action is</span>
+      <span class="a3" style="flex:4">11-26 · Drift, scale and chunks</span>
+      <span class="a4" style="flex:4">26-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Wrenfield's arm keeps arriving a little to the left</h2>
+    </div>
+    <p class="lede">Wrenfield Lab (constructed) trained its first parcel-pick policy on actions stored as small changes per step. In short tests it looked fine. On long picks the gripper ended up centimetres from the parcel, always on the same side. Nothing was broken in the cameras or the calibration. The error was in the action column itself: a tiny bias per step, added up 500 times. Tonight is about the four choices hidden in that column and how each one shows up in the data.</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> One small motion written four ways, with the frame each version lives in. A live calculator showing why delta actions drift and absolute targets do not, and how re-observing bounds the drift. The rule for normalisation statistics: computed on the training split, saved with the model, applied per dataset. What action chunks are, what the chunking ablation in Zhao et al. (2023) found, and what chunks cost you. And a numpy script that runs the whole round trip, raw to deltas to normalised chunks and back, with an error you can check.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why the action column deserves a session<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>In most tabular work the label is fixed by the business: churned or not, price paid. In robot learning the label is a stream of commands, and the team decides how to write it down. Two teams can record the same physical motion and ship datasets that a model sees as completely different, or that a loader silently mixes as if they were the same.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>Zhao, Kumar, Levine and Finn (2023) recorded at 50 Hz and took as the action the joint positions of the leader arms that a person moved, not the robot's own follower arms. At every step the action is the target joint positions for both arms at the next step, and a low-level controller tracks them. That one choice, absolute targets in joint space, is the starting point for everything tonight.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Words for tonight<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Joint space.</strong> The action is one number per motor: an angle or a position for each joint, plus the gripper.</li>
+          <li><strong>End-effector space.</strong> The action is where the gripper should be: position and orientation in some frame (practitioner session 2).</li>
+          <li><strong>Absolute target.</strong> "Go to this position." Meaningful on its own.</li>
+          <li><strong>Delta, or relative action.</strong> "Move by this much from where you are." Meaningful only with the current state.</li>
+          <li><strong>Normalisation statistics.</strong> The mean and spread used to rescale actions before training, and to undo the rescaling at run time.</li>
+          <li><strong>Action chunk.</strong> A block of k future actions predicted at once.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers joint vs end-effector, absolute vs delta, position vs velocity</span>
+      <h2>One motion, four ways to write it down</h2>
+      <span class="tag concept">8 min live</span>
+    </div>
+    <p class="lede">Take a tiny motion: the arm moves for two steps, shoulder opening a little, elbow closing a little, the gripper drifting forward and down. You can record the same two steps as joint angles or as gripper positions, and either as where to go or as how far to move. All four are correct. They are not interchangeable, and each one needs something else stored next to it to mean anything.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 362" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn two by two grid. The same two-step motion from a start of joints 0.50 and 1.20 radians, gripper at 0.40 and 0.20 metres. Absolute joint targets, highlighted in marigold: step 1 0.52 and 1.17, step 2 0.55 and 1.13 radians. Delta joint: plus 0.02 and minus 0.03, then plus 0.03 and minus 0.04 radians. Absolute end-effector in the base frame: 0.41 and 0.19, then 0.43 and 0.18 metres. Delta end-effector: plus 0.01 and minus 0.01, then plus 0.02 and minus 0.01 metres, frame must be stated.">
+        <defs>
+          <filter id="wrnp5aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="31" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp5aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp5aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp5aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp5aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp5aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp5aK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp5aA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp5aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp5aH" x="30" y="28">ONE TWO-STEP MOTION, WRITTEN FOUR WAYS</text>
+        <text class="wrnp5aS" x="30" y="50">Start: joints (0.50, 1.20) rad; gripper at (0.40, 0.20) m in the robot's base frame.</text>
+
+        <g filter="url(#wrnp5aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="64" width="400" height="112" rx="8" transform="rotate(-0.4 230 120)" fill="#F4B63C"/>
+          <rect x="450" y="64" width="400" height="112" rx="8" transform="rotate(0.4 650 120)" fill="#FFFFFF"/>
+          <rect x="30" y="190" width="400" height="112" rx="8" transform="rotate(0.3 230 246)" fill="#FFFFFF"/>
+          <rect x="450" y="190" width="400" height="112" rx="8" transform="rotate(-0.3 650 246)" fill="#FCEFF7"/>
+          <!-- doodle: a two-link arm with a gripper -->
+          <path d="M772 46 L796 22 L826 34 M826 34 L834 28 M826 34 L834 42" stroke="#9B0865" stroke-width="2.4"/>
+          <path d="M764 48 L780 48"/>
+        </g>
+
+        <text class="wrnp5aL" x="46" y="86">Absolute joint targets</text>
+        <text class="wrnp5aK" x="46" y="104">joint space: one angle per motor</text>
+        <text class="wrnp5aL" x="46" y="130">step 1: (0.52, 1.17) rad</text>
+        <text class="wrnp5aL" x="46" y="150">step 2: (0.55, 1.13) rad</text>
+        <text class="wrnp5aK" x="46" y="168">Zhao et al. (2023) record this one, at 50 Hz</text>
+
+        <text class="wrnp5aL" x="466" y="86">Delta joint actions</text>
+        <text class="wrnp5aS" x="466" y="104">joint space, change from the current angles</text>
+        <text class="wrnp5aL" x="466" y="130">step 1: (+0.02, -0.03) rad</text>
+        <text class="wrnp5aL" x="466" y="150">step 2: (+0.03, -0.04) rad</text>
+        <text class="wrnp5aS" x="466" y="168">means nothing without the previous state</text>
+
+        <text class="wrnp5aL" x="46" y="212">Absolute end-effector targets</text>
+        <text class="wrnp5aS" x="46" y="230">base frame: needs the calibration (session 2)</text>
+        <text class="wrnp5aL" x="46" y="256">step 1: (0.41, 0.19) m</text>
+        <text class="wrnp5aL" x="46" y="276">step 2: (0.43, 0.18) m</text>
+        <text class="wrnp5aS" x="46" y="294">plus orientation and gripper in a real arm</text>
+
+        <text class="wrnp5aL" x="466" y="212">Delta end-effector actions</text>
+        <text class="wrnp5aS" x="466" y="230">which frame: base or gripper? store it</text>
+        <text class="wrnp5aL" x="466" y="256">step 1: (+0.01, -0.01) m</text>
+        <text class="wrnp5aL" x="466" y="276">step 2: (+0.02, -0.01) m</text>
+        <text class="wrnp5aS" x="466" y="294">the smallest numbers, the most context needed</text>
+
+        <text class="wrnp5aA" x="740" y="34" text-anchor="end">two joints shown; a real arm has more</text>
+
+        <text class="wrnp5aN" x="30" y="324">Constructed values for illustration, not computed from a real arm's kinematics. Same motion, four columns:</text>
+        <text class="wrnp5aN" x="30" y="342">a loader that mixes them without a tag trains on numbers that mean four different things.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold panel is what Zhao et al. (2023) recorded; every other panel needs one more piece of context stored beside it.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Joint or end-effector: what each one carries<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A joint-space action talks directly to the motors. It needs no frame and no calibration, but it only makes sense for one arm design: the same six numbers on a different arm produce a different motion. An end-effector action says where the gripper should go, which is easier to compare across robots, but it lives in a coordinate frame, so it inherits every calibration question from practitioner session 2, and something has to convert it into motor commands.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>In the rig of Zhao et al. (2023), an action is the target joint positions for both arms at the next step, read from the leader arms a person moves, and a low-level controller makes the follower arms track them. The authors chose the leader's positions on purpose: the force applied is implicit in the gap between leader and follower. A joint-space absolute target was the most direct record of what the person did.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Absolute or delta: what each one assumes<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>An absolute target says "be here next". If one step is wrong, the next step's target is still correct, so errors do not pile up. A delta says "move this much". It is smaller, often more similar across the workspace, and does not care where the arm started, which is why teams like it. But a delta is only meaningful together with the state it was applied to, and every per-step error carries into every later step. Part 2 shows how fast that adds up.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Position or velocity<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A third axis: the action can be a position (where) or a velocity (how fast). A velocity command held for one control period is a delta in disguise, so it shares the delta's drift. It also ties the action to the clock: the same velocity at 50 Hz and at 10 Hz moves the arm by different amounts per step. Store the control rate in the episode's metadata (practitioner session 1), and resample with care; resampling streams is taught in <a href="https://phoebefu6.github.io/learn-iot-data-with-phoebe/">learn IoT data</a>.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers drift and normalisation statistics</span>
+      <h2>Deltas drift, absolutes do not</h2>
+      <span class="tag concept">8 min live</span>
+    </div>
+    <p class="lede">Give a policy a tiny, constant bias: every step it is off by the same fraction of a millimetre in the same direction. With absolute targets, each step aims at the right place plus the bias, so the error stays the size of the bias. With deltas, each step moves from where the last one ended, so the bias is added again every step. Ten seconds at 50 Hz is 500 steps. The calculator below does that sum.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 336" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn chart of position error against steps from 0 to 500. Delta actions without re-observation, a marigold fan, grow in a straight line to 100 millimetres at 500 steps for a 0.2 millimetre bias per step. Delta actions that re-observe every 100 steps form a dashed sawtooth that returns to near zero each time. Absolute targets stay in a thin flat band at the bias, 0.2 millimetres.">
+        <defs>
+          <filter id="wrnp5bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="37" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp5bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp5bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp5bH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp5bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp5bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp5bV { font: 800 16px Inter, sans-serif; fill: #6B0546; }
+          .wrnp5bA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp5bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp5bH" x="30" y="24">POSITION ERROR FROM A 0.2 MM BIAS PER STEP</text>
+        <text class="wrnp5bV" x="820" y="42" text-anchor="end">100 mm after 500 steps</text>
+
+        <g filter="url(#wrnp5bSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M90 60 L90 250 L826 250"/>
+          <path d="M90 250 L820 58 L820 94 Z" fill="#F4B63C"/>
+          <path d="M90 250 L820 70"/>
+          <rect x="90" y="243" width="730" height="6" rx="2" fill="#FCEFF7"/>
+          <path d="M90 250 L236 214 L236 248 L382 214 L382 248 L528 214 L528 248 L674 214 L674 248 L820 214" stroke="#9B0865" stroke-dasharray="6 5"/>
+          <!-- legend swatches -->
+          <rect x="90" y="282" width="22" height="12" rx="2" fill="#F4B63C"/>
+          <path d="M330 288 L356 288" stroke="#9B0865" stroke-dasharray="6 5"/>
+          <rect x="620" y="282" width="22" height="12" rx="2" fill="#FCEFF7"/>
+        </g>
+
+        <text class="wrnp5bA" x="80" y="74" text-anchor="end">100</text>
+        <text class="wrnp5bA" x="80" y="254" text-anchor="end">0</text>
+        <text class="wrnp5bA" x="30" y="168">error</text>
+        <text class="wrnp5bA" x="30" y="182">(mm)</text>
+        <text class="wrnp5bA" x="90" y="268">0</text>
+        <text class="wrnp5bA" x="820" y="268" text-anchor="end">500 steps = 10 s at 50 Hz</text>
+        <text class="wrnp5bS" x="300" y="112" style="fill:#2A1222">each step adds the bias again: bias x steps</text>
+
+        <text class="wrnp5bL" x="120" y="292">Delta, open loop</text>
+        <text class="wrnp5bL" x="364" y="292">Delta, re-observe every 100</text>
+        <text class="wrnp5bL" x="650" y="292">Absolute: stays 0.2 mm</text>
+
+        <text class="wrnp5bN" x="30" y="320">Constructed bias. The fan is how far a little noise around the same bias spreads the drift.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold fan is the delta drift: the same bias that costs absolute targets 0.2 mm costs deltas 100 mm by the end of a 10-second pick.</figcaption>
+    </figure>
+
+    <div class="wk" id="wrnp5-drift">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">Computed in this page, step by step. A constructed policy that is wrong by the same small bias, in the same direction, at every step. At the defaults (0.2 mm, 500 steps, no re-observation) it prints 100 mm for deltas and 0.2 mm for absolute targets.</span>
+      </div>
+      <div class="wk-body">
+        <label class="sql-label" for="wrnp5-bias">Bias per step (mm)</label>
+        <select class="sql-code" id="wrnp5-bias">
+          <option value="0.05">0.05</option>
+          <option value="0.1">0.1</option>
+          <option value="0.2" selected>0.2, the worked example</option>
+          <option value="0.5">0.5</option>
+          <option value="1">1</option>
+        </select>
+        <label class="sql-label" for="wrnp5-steps">Steps (at 50 Hz)</label>
+        <select class="sql-code" id="wrnp5-steps">
+          <option value="100">100 (2 s)</option>
+          <option value="250">250 (5 s)</option>
+          <option value="500" selected>500 (10 s), the worked example</option>
+          <option value="700">700 (14 s)</option>
+          <option value="1500">1500 (30 s)</option>
+        </select>
+        <label class="sql-label" for="wrnp5-reobs">Closed-loop re-observation (delta only)</label>
+        <select class="sql-code" id="wrnp5-reobs">
+          <option value="0" selected>off: open loop</option>
+          <option value="10">every 10 steps</option>
+          <option value="50">every 50 steps</option>
+          <option value="100">every 100 steps</option>
+        </select>
+        <div id="wrnp5-out"></div>
+        <p class="sql-note" id="wrnp5-verdict">...</p>
+      </div>
+      <div class="wk-foot">Constructed policy and bias; a real policy's errors are not constant and partly cancel, so your numbers will differ. Re-observation here means the policy sees where the arm really is and the error resets, except for the bias of the step it then takes.</div>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Three runs worth doing in the calculator<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>The default.</strong> 0.2 mm for 500 steps prints 100 mm for deltas and 0.2 mm for absolute targets. A bias you could never see in a single step is a missed parcel by the end.</li>
+          <li><strong>Make the pick longer.</strong> Delta drift grows with the number of steps; absolute error does not move. Long tasks punish deltas most.</li>
+          <li><strong>Turn re-observation on.</strong> Closing the loop caps the drift at roughly the bias times the re-observation interval. That is why delta policies are run closed loop, and why the interval matters as much as the bias.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Normalisation: three rules for the statistics<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Actions are rescaled before training so that every dimension has a similar spread: a wrist joint that moves 0.01 rad per step and a gripper that opens 0.05 m should not differ by a factor the optimiser has to discover. Three rules keep this honest.</p>
+        <ul>
+          <li><strong>Compute the statistics on the training split only.</strong> Statistics from all the data leak the held-out episodes into the model, so the evaluation is no longer held out.</li>
+          <li><strong>Store them with the model.</strong> At run time the policy outputs normalised numbers. Without the exact mean and spread used in training, they cannot be turned back into commands.</li>
+          <li><strong>Apply them per dataset.</strong> A delta dataset and an absolute dataset have completely different statistics; one shared set squashes one of them into noise.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>When the Open X-Embodiment Collaboration (2023) pooled 60 datasets from 22 robot types, it mapped every dataset to a 7-dimensional end-effector action and normalised each dataset's actions before training, then de-normalised per robot. Its authors still warn that actions may be absolute or relative positions or velocities, and that "the same action vector may induce very different motions for different robots." Practitioner session 4 covers what mixing did to results.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Where normalisation goes wrong quietly<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Three failures that produce no error message. A gripper dimension that never moves in the training split has a spread of zero, and dividing by it produces infinities: add a small floor. A retrained model ships with the old statistics file: every command is rescaled wrongly by a fixed factor. And a dataset gains a new operator with a different style: the training statistics no longer describe the actions being produced. Check the held-out split's normalised mean and spread every time; the build-along prints both.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers action chunks and temporal ensembling</span>
+      <h2>Predict a chunk, not a step</h2>
+      <span class="tag concept">7 min live</span>
+    </div>
+    <p class="lede">A policy that outputs one action per step makes 500 decisions in a 10-second pick, and every small mistake can push it into a state the demonstrations never showed. Action Chunking with Transformers (ACT) predicts k future actions at once. The arm executes them, then the policy decides again. Fewer decisions, fewer chances for errors to compound. The price is that the arm reacts less often to what it sees.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 334" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn timeline of 400 steps executed three ways. Top: chunks of k equals 100 with no ensemble, the policy queried every 100 steps and four chunks executed in turn. Middle, highlighted in marigold: temporal ensemble, a new chunk predicted every step, so several overlapping chunks cover each step and their predictions are averaged. Bottom: very large k, one chunk covers everything, close to open loop.">
+        <defs>
+          <filter id="wrnp5cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="41" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp5cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp5cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp5cH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp5cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp5cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp5cA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp5cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp5cH" x="30" y="24">THE SAME 400 STEPS, THREE WAYS TO RUN CHUNKS</text>
+
+        <g filter="url(#wrnp5cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <!-- row 1: contiguous chunks -->
+          <rect x="170" y="58" width="166" height="32" rx="5" fill="#FFFFFF"/>
+          <rect x="338" y="58" width="166" height="32" rx="5" fill="#FFFFFF"/>
+          <rect x="506" y="58" width="166" height="32" rx="5" fill="#FFFFFF"/>
+          <rect x="674" y="58" width="166" height="32" rx="5" fill="#FFFFFF"/>
+          <path d="M170 40 L170 54 M338 40 L338 54 M506 40 L506 54 M674 40 L674 54" marker-end="url(#wrnp5cAr)"/>
+          <!-- row 2: overlapping chunks, averaged -->
+          <path d="M290 116 h22 v74 h-22 Z" fill="#F4B63C"/>
+          <rect x="170" y="122" width="200" height="8" rx="2" fill="url(#wrnp5cHc)"/>
+          <rect x="194" y="134" width="200" height="8" rx="2" fill="url(#wrnp5cHc)"/>
+          <rect x="218" y="146" width="200" height="8" rx="2" fill="url(#wrnp5cHc)"/>
+          <rect x="242" y="158" width="200" height="8" rx="2" fill="url(#wrnp5cHc)"/>
+          <rect x="266" y="170" width="200" height="8" rx="2" fill="url(#wrnp5cHc)"/>
+          <rect x="290" y="182" width="200" height="8" rx="2" fill="url(#wrnp5cHc)"/>
+          <!-- row 3: one huge chunk -->
+          <rect x="170" y="216" width="670" height="32" rx="5" fill="url(#wrnp5cHc)"/>
+          <path d="M170 254 L840 254"/>
+          <!-- doodle: a gripper -->
+          <path d="M836 22 L836 10 M824 22 L848 22 M824 22 L824 40 M848 22 L848 40" stroke="#B5338B" stroke-width="2.5"/>
+        </g>
+
+        <text class="wrnp5cL" x="156" y="70" text-anchor="end">No ensemble</text>
+        <text class="wrnp5cS" x="156" y="86" text-anchor="end">new chunk every k = 100</text>
+        <text class="wrnp5cL" x="253" y="79" text-anchor="middle">chunk 1</text>
+        <text class="wrnp5cL" x="421" y="79" text-anchor="middle">chunk 2</text>
+        <text class="wrnp5cL" x="589" y="79" text-anchor="middle">chunk 3</text>
+        <text class="wrnp5cL" x="757" y="79" text-anchor="middle">chunk 4</text>
+        <text class="wrnp5cS" x="180" y="46">policy queried</text>
+
+        <text class="wrnp5cL" x="156" y="150" text-anchor="end">Temporal ensemble</text>
+        <text class="wrnp5cS" x="156" y="166" text-anchor="end">new chunk every step</text>
+        <text class="wrnp5cL" x="512" y="148">each step is covered by several chunks;</text>
+        <text class="wrnp5cL" x="512" y="166">their predictions for it are averaged</text>
+
+        <text class="wrnp5cL" x="156" y="230" text-anchor="end">Very large k</text>
+        <text class="wrnp5cS" x="156" y="246" text-anchor="end">one decision: near open loop</text>
+
+        <text class="wrnp5cA" x="170" y="272">step 0</text>
+        <text class="wrnp5cA" x="840" y="272" text-anchor="end">step 400</text>
+
+        <text class="wrnp5cN" x="30" y="300">Schematic of the mechanism in Zhao et al. (2023); the chunk counts are drawn, not measured. The marigold</text>
+        <text class="wrnp5cN" x="30" y="318">column is one step, receiving a prediction from every chunk that overlaps it.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold column is temporal ensembling: one step, many overlapping predictions, one averaged action.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What the chunking ablation found<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>Zhao et al. (2023) varied the chunk size k with temporal ensembling switched off. Success, averaged over four simulated settings, went from 1 percent at k = 1 to 44 percent at k = 100. Longer still, at k = 200 and k = 400, success dipped slightly: by then the policy is close to running open loop. Switching temporal ensembling on added 3.3 percent for ACT and 4 percent for a baseline method. Chunking also helped two baseline methods, not only ACT.</p>
+        </div>
+        <p>Read it as a data decision, not a model trick. The label went from "the next action" to "the next k actions". The same recorded episodes became a different dataset, and that change alone moved the success rate by more than forty points in simulation.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Why chunks help, and what they cost<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Fewer decisions compound.</strong> The paper's hypothesis: with k = 100 a 500-step episode needs 5 decisions, not 500, so small errors have fewer chances to push the arm into states the demonstrations never covered.</li>
+          <li><strong>Human pauses stop confusing the model.</strong> People hesitate mid-motion; a chunk can represent the pause as part of a plan rather than as an isolated, unexplained step.</li>
+          <li><strong>The trade: less reactive.</strong> Inside a chunk the arm executes a plan made earlier. If the parcel slips at step 20 of a 100-step chunk, a policy without ensembling will not see it until step 100. The dip at k = 200 and 400 is that cost showing up.</li>
+          <li><strong>Ensembling buys some reactivity back.</strong> Querying every step and averaging overlaps gives a fresh opinion each step while keeping smooth motion, at the price of running the model every step.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Chunks meet frames and mixed robots<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A chunk inherits every choice from Parts 1 and 2. A chunk of absolute joint targets is a short trajectory for one arm design. A chunk of deltas sums its own errors across k steps before the policy looks again. A chunk of end-effector targets is only as good as the frame it is written in (practitioner session 2). And when datasets from several robots are mixed (practitioner session 4), the chunk length and the control rate must agree, or the same k means a different number of seconds on each robot.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ BUILD-ALONG ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>The round trip in numpy: raw, delta, normalise, chunk, back</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Python 3.10 or later with numpy. You build one constructed Wrenfield trajectory, 500 steps of a 7-joint arm, then do what a training loader does: turn absolute targets into deltas, fit normalisation statistics on a training split only, cut the result into overlapping chunks, and reverse every step. If the round trip does not come back to the start, something in the pipeline is lying.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 262" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn pipeline of five boxes. Raw absolute targets, 500 by 7 radians. Deltas by differencing, first row zero. Normalise with training statistics only, highlighted in marigold, saved with the model. Chunk into 19 chunks of 50 steps by 7 joints. Back: average overlaps, de-normalise, cumulative sum. A return arrow from the last box to the first notes the round-trip maximum error, 1.12e-16 radians.">
+        <defs>
+          <filter id="wrnp5dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="43" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp5dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp5dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp5dH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp5dL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp5dS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp5dK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp5dV { font: 800 16px Inter, sans-serif; fill: #6B0546; }
+          .wrnp5dN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp5dH" x="30" y="28">THE ROUND TRIP, AS RUN BELOW</text>
+
+        <g filter="url(#wrnp5dSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="60" width="150" height="86" rx="8" transform="rotate(-0.5 105 103)" fill="url(#wrnp5dHc)"/>
+          <rect x="202" y="60" width="150" height="86" rx="8" transform="rotate(0.4 277 103)" fill="#FFFFFF"/>
+          <rect x="374" y="60" width="150" height="86" rx="8" transform="rotate(-0.4 449 103)" fill="#F4B63C"/>
+          <rect x="546" y="60" width="150" height="86" rx="8" transform="rotate(0.5 621 103)" fill="#FFFFFF"/>
+          <rect x="718" y="60" width="150" height="86" rx="8" transform="rotate(-0.3 793 103)" fill="#FCEFF7"/>
+          <path d="M182 103 L198 103 M354 103 L370 103 M526 103 L542 103 M698 103 L714 103" marker-end="url(#wrnp5dAr)"/>
+          <path d="M793 150 L793 190 L105 190 L105 154" marker-end="url(#wrnp5dAr)"/>
+          <!-- doodle: the stats file -->
+          <path d="M538 22 L556 22 L562 28 L562 48 L538 48 Z M556 22 L556 28 L562 28" stroke="#9B0865" stroke-width="2"/>
+        </g>
+
+        <text class="wrnp5dK" x="572" y="40">norm_stats.npz</text>
+
+        <text class="wrnp5dL" x="44" y="88">1 Raw absolute</text>
+        <text class="wrnp5dK" x="44" y="108">(500, 7) rad</text>
+        <text class="wrnp5dK" x="44" y="126">10 s at 50 Hz</text>
+        <text class="wrnp5dL" x="216" y="88">2 Deltas</text>
+        <text class="wrnp5dS" x="216" y="108">diff, first row 0</text>
+        <text class="wrnp5dS" x="216" y="126">still (500, 7)</text>
+        <text class="wrnp5dL" x="388" y="88">3 Normalise</text>
+        <text class="wrnp5dK" x="388" y="108">train stats only</text>
+        <text class="wrnp5dK" x="388" y="126">saved with model</text>
+        <text class="wrnp5dL" x="560" y="88">4 Chunk</text>
+        <text class="wrnp5dS" x="560" y="108">k = 50, stride 25</text>
+        <text class="wrnp5dS" x="560" y="126">(19, 50, 7)</text>
+        <text class="wrnp5dL" x="732" y="88">5 Back</text>
+        <text class="wrnp5dS" x="732" y="108">average overlaps,</text>
+        <text class="wrnp5dS" x="732" y="126">de-normalise, sum</text>
+
+        <text class="wrnp5dV" x="449" y="216" text-anchor="middle">round-trip max error 1.12e-16 rad</text>
+
+        <text class="wrnp5dN" x="30" y="246">Constructed trajectory, seed 5. Zero up to float noise means every step is reversible.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold box is the one step that must remember where its numbers came from: the training split.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Build the constructed trajectory</h4>
+        <p>A smooth swing on seven joints plus a slow random wander, 500 steps at 50 Hz. Keep the starting state: deltas mean nothing without it.</p>
+        <div class="prompt-box good"><span class="label">actions.py, part 1</span>import numpy as np
+
+rng = np.random.default_rng(5)           # constructed Wrenfield trajectory
+hz, steps, joints = 50, 500, 7
+t = np.arange(steps) / hz                # 10 s at 50 Hz
+q = (0.4 * np.sin(2 * np.pi * 0.2 * t)[:, None] * np.linspace(0.5, 1.5, joints)
+     + np.cumsum(rng.normal(0, 0.002, (steps, joints)), axis=0))
+q_start = q[0].copy()                    # the state before the first action</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Absolute targets to deltas</h4>
+        <p>Difference along time. Prepending the first row makes the first delta zero, so the shape stays (500, 7) and step 0 means "stay where you start".</p>
+        <div class="prompt-box good"><span class="label">actions.py, part 2</span># 1. absolute targets -&gt; deltas (relative actions)
+d = np.diff(q, axis=0, prepend=q[:1])    # d[0] is zero: no move yet
+print("absolute shape:", q.shape, " delta shape:", d.shape)</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Normalise with training statistics only</h4>
+        <p>The first 400 steps are the training split, the last 100 are held out. Fit the mean and spread on the first 400, apply them to everything, and save them next to the model. The held-out split will not come out at exactly 0 and 1, and it should not.</p>
+        <div class="prompt-box good"><span class="label">actions.py, part 3</span># 2. normalisation statistics from the TRAIN split only
+train, held = d[:400], d[400:]
+mu, sd = train.mean(axis=0), train.std(axis=0) + 1e-8
+z = (d - mu) / sd
+print("train  z mean %.3f  std %.3f" % (z[:400].mean(), z[:400].std()))
+print("held   z mean %.3f  std %.3f" % (z[400:].mean(), z[400:].std()))
+np.savez("norm_stats.npz", mu=mu, sd=sd)  # ships with the model</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Cut into overlapping chunks of k = 50</h4>
+        <p>A stride of 25 means every step after the first 25 sits in two chunks, the same overlap that temporal ensembling averages at run time.</p>
+        <div class="prompt-box good"><span class="label">actions.py, part 4</span># 3. chunks of k = 50, stride 25 (each step lands in up to two chunks)
+k, stride = 50, 25
+starts = range(0, steps - k + 1, stride)
+chunks = np.stack([z[s:s + k] for s in starts])
+print("chunks:", chunks.shape)</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Go back, and check the error</h4>
+        <p>Average the overlapping chunk values, undo the normalisation with the saved statistics, and add the deltas up from the starting state.</p>
+        <div class="prompt-box good"><span class="label">actions.py, part 5</span># 4. back: average overlapping chunks, de-normalise, cumulative sum
+acc = np.zeros_like(z); cnt = np.zeros((steps, 1))
+for s, c in zip(starts, chunks):
+    acc[s:s + k] += c; cnt[s:s + k] += 1
+d_back = (acc / cnt) * sd + mu
+q_back = q_start + np.cumsum(d_back, axis=0)
+print("round-trip max error (rad): %.2e" % np.abs(q_back - q).max())</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Run it and read the output</h4>
+        <p>Run <code>python3 actions.py</code> from a scratch folder. This is what the script printed when this page was written; the last line may differ in its tiny digits on another machine, but it should stay near 1e-16.</p>
+        <div class="prompt-box good"><span class="label">Expected output</span>absolute shape: (500, 7)  delta shape: (500, 7)
+train  z mean 0.000  std 1.000
+held   z mean 0.361  std 0.847
+chunks: (19, 50, 7)
+round-trip max error (rad): 1.12e-16</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Extend it: break it on purpose</h4>
+        <p>Replace <code>q_start</code> with <code>q_start + 0.1</code> and rerun: every reconstructed angle is now off by 0.1 rad, because deltas carry no memory of where they began. Then add <code>0.0001</code> to every row of <code>d_back</code>: the error grows with the step count until it reaches 0.05 rad at step 500, which is 0.0001 x 500, the drift from Part 2 in your own numbers.</p>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> Every transform in an action pipeline gets an inverse and a round-trip test. The held-out line, 0.361 and 0.847 rather than 0 and 1, is the sign that the statistics really came from the training split alone.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">A constructed policy is off by 0.2 mm in the same direction at every step of a 500-step pick. Which action type ends the pick about 100 mm from the target?</p>
+      <button class="qopt" type="button">A · Absolute targets, because each target is wrong</button>
+      <button class="qopt" type="button">B · Neither; 0.2 mm is below any gripper's tolerance</button>
+      <button class="qopt" type="button">C · Delta actions run open loop, because each step starts where the last one ended and the bias is added 500 times</button>
+      <p class="qwhy">Absolute targets stay off by the bias, 0.2 mm, because each step aims at the true position plus the bias. Deltas accumulate: 0.2 mm x 500 = 100 mm. Re-observing the arm's real position bounds the drift.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">Where should action normalisation statistics come from?</p>
+      <button class="qopt" type="button">A · The training split only, stored with the model and applied per dataset</button>
+      <button class="qopt" type="button">B · All the data including the held-out split, so the scaling is as accurate as possible</button>
+      <button class="qopt" type="button">C · One shared set for every dataset in the mix, so the model sees one scale</button>
+      <p class="qwhy">Statistics from all the data leak the held-out split into training. Without the stored statistics the policy's outputs cannot be turned back into commands. A shared set across delta and absolute datasets squashes one of them.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">In the chunking ablation of Zhao et al. (2023), what do k = 1 and a very large k mean?</p>
+      <button class="qopt" type="button">A · k = 1 is open loop, very large k is fully reactive</button>
+      <button class="qopt" type="button">B · k = 1 is one decision per step, which scored 1 percent; very large k is close to open loop, where success dipped slightly after peaking at 44 percent at k = 100</button>
+      <button class="qopt" type="button">C · They mean the same; k only changes training speed</button>
+      <p class="qwhy">k = 1 is the classic one-action-per-step policy: many decisions, many chances to compound errors. A very large k executes a long plan without looking, close to open loop. The middle won in that study.</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">Before session 6</span>
+      <h2>Homework</h2>
+    </div>
+    <ol>
+      <li>Rewrite <code>actions.py</code> so it can produce absolute targets as well as deltas, with a tag in a metadata dict saying which, and make the reverse step refuse to run if the tag is missing.</li>
+      <li>Change the train split to the last 400 steps instead of the first 400 and rerun. Which held-out numbers move, and why?</li>
+      <li>For a robot dataset you know or can read about, write down the four choices for its action column: space, reference, position or velocity, and the normalisation statistics it ships.</li>
+      <li>In the calculator, find the re-observation interval that keeps delta drift at or under 2 mm for a 0.2 mm bias. Then explain in one sentence what that interval costs. Practitioner session 6 starts from simulation, where the bias is yours to set.</li>
+    </ol>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Action representations and leader joint positions</span><span class="note">Zhao, Kumar, Levine and Finn (2023), arXiv 2304.13705: 50 Hz, leader joint positions as the action, tracked by a low-level controller. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Action chunking and temporal ensembling</span><span class="note">Zhao et al. (2023), arXiv 2304.13705: 1 percent at k = 1 to 44 percent at k = 100, slight dip at 200 and 400; ensembling +3.3 percent for ACT, +4 percent for a baseline. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Per-dataset normalisation</span><span class="note">Open X-Embodiment Collaboration (2023), arXiv 2310.08864: actions normalised per dataset, absolute or relative, same vector different motions. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Delta drift and the round trip</span><span class="note">Constructed: the drift calculator computes in the page; the build-along output was run and copied.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Mixing robots</span><span class="note">Named tonight. Practitioner session 4.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Coordinate frames for end-effector actions</span><span class="note">Named tonight. Practitioner session 2.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Clocks, control rates and resampling</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-iot-data-with-phoebe/">learn IoT data</a>.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>The label.</strong> In imitation learning the action column is the label, and its format is a design choice.</div>
+      <div class="cheat-item"><strong>Four choices.</strong> Joint or end-effector, absolute or delta, position or velocity, one step or a chunk.</div>
+      <div class="cheat-item"><strong>Context to store.</strong> Deltas need the state; end-effector actions need the frame; velocities need the rate.</div>
+      <div class="cheat-item"><strong>Drift.</strong> Delta error grows as bias x steps; absolute error stays at the bias.</div>
+      <div class="cheat-item"><strong>Closing the loop.</strong> Re-observing every k steps caps delta drift near bias x k.</div>
+      <div class="cheat-item"><strong>Normalisation.</strong> Train split only, saved with the model, per dataset, with a floor on the spread.</div>
+      <div class="cheat-item"><strong>Chunks.</strong> 1 percent at k = 1, 44 percent at k = 100 in simulation; very large k is near open loop.</div>
+      <div class="cheat-item"><strong>Round trip.</strong> Every transform gets an inverse and a test that comes back to zero.</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>Domain randomization.</strong> Training in simulation on scenes that are deliberately wrong, so the real one looks like just another variation.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Practitioner session 5 of 10 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="p4-mixing-data-across-robots.html">← Prev: Mixing data across robots</a>
+        <a href="p6-domain-randomization.html">Next: Domain randomization →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  var bias = document.getElementById("wrnp5-bias");
+  var stepsSel = document.getElementById("wrnp5-steps");
+  var reobs = document.getElementById("wrnp5-reobs");
+  var out = document.getElementById("wrnp5-out");
+  var verdict = document.getElementById("wrnp5-verdict");
+  if (!bias || !stepsSel || !reobs || !out) return;
+  function fmt(x) { return (Math.round(x * 100) / 100).toString(); }
+  function simulate(b, n, k) {
+    var dErr = 0, dMax = 0, aErr = 0, aMax = 0;
+    for (var i = 1; i <= n; i++) {
+      if (k > 0 && i % k === 0) { dErr = b; } else { dErr += b; }
+      aErr = b;
+      if (dErr > dMax) dMax = dErr;
+      if (aErr > aMax) aMax = aErr;
+    }
+    return { dFinal: dErr, dMax: dMax, aFinal: aErr, aMax: aMax };
+  }
+  function render() {
+    var b = Number(bias.value), n = Number(stepsSel.value), k = Number(reobs.value);
+    var r = simulate(b, n, k);
+    var html = '<table class="sql-table"><thead><tr><th>Action type</th><th>Final error (mm)</th><th>Worst during the run (mm)</th></tr></thead><tbody>';
+    html += "<tr><td>Delta" + (k > 0 ? ", re-observe every " + k : ", open loop") + "</td><td><b>" + fmt(r.dFinal) + "</b></td><td>" + fmt(r.dMax) + "</td></tr>";
+    html += "<tr><td>Absolute targets</td><td><b>" + fmt(r.aFinal) + "</b></td><td>" + fmt(r.aMax) + "</td></tr>";
+    out.innerHTML = html + "</tbody></table>";
+    var secs = fmt(n / 50);
+    verdict.textContent = k > 0
+      ? "Over " + secs + " s, re-observing every " + k + " steps keeps delta drift at or below " + fmt(r.dMax) + " mm; absolute targets stay at " + fmt(r.aFinal) + " mm."
+      : "Over " + secs + " s, open-loop deltas drift " + fmt(r.dFinal) + " mm (bias x steps); absolute targets stay at " + fmt(r.aFinal) + " mm.";
+  }
+  bias.addEventListener("change", render);
+  stepsSel.addEventListener("change", render);
+  reobs.addEventListener("change", render);
+  render();
+})();
+</script>
+<style>
+  #wrnp5-drift .sql-code { border: 1px solid var(--hairline); border-radius: 8px; max-width: 24rem; }
+  #wrnp5-drift table.sql-table { margin: .6rem 0 .2rem; font-size: .85rem; }
+</style>
+</body>
+</html>

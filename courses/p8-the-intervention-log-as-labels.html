@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Practitioner session 8 of 10. The intervention log as labels: when an operator takes over a failing rollout, one event carries two labels. What the log hides about the operator's threshold, and how to use corrections for training while judging the policy on separate hands-off trials. Constructed Wrenfield log in pandas.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="The intervention log as labels - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Practitioner session 8 of 10. A takeover is a state label and an action label in one event. An intervention rate measures the operator as much as the policy.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/p8-the-intervention-log-as-labels.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The intervention log as labels - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="Two labels in one takeover, a threshold hidden in every intervention rate, and two separate paths: corrections to training, hands-off trials to evaluation.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Practitioner session 8 · The intervention log as labels - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Practitioner session 8 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Practitioner session 8 of 10</div>
+    <h1>The intervention log <span class="accent">as labels</span></h1>
+    <p class="sub">When a policy runs and a person watching takes over just before it fails, the log records far more than an embarrassment. It records where the policy was about to go wrong and what should have happened instead: two labels, collected exactly where the policy is weakest. Tonight you learn to read that log as training data, to see the operator's judgement hidden inside every intervention count, and to keep the corrections and the evaluation on separate paths. Wrenfield Lab and every number in its log are constructed; no published intervention figures are quoted here.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Advanced</span>
+      <span class="chip audience">ML engineers running policy rollouts</span>
+      <span class="chip audience">Data engineers who own the run logs</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:5">3-23 · Two labels and the hidden threshold</span>
+      <span class="a3" style="flex:2">23-28 · Using it well</span>
+      <span class="a4" style="flex:4">28-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Wrenfield's operators keep a log</h2>
+    </div>
+    <p class="lede">Wrenfield Lab (constructed) now runs its parcel-picking policy on the bench every day, with an operator beside the arm holding the teleoperation controls. When the gripper drifts toward the edge of the tote, the operator takes over, finishes the pick by hand, and hands control back. Each takeover writes a row. After a month the team has a few hundred rows, and two questions: can we train on them, and does a falling intervention count mean the policy got better?</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> A drawing of one takeover as two labels on one clock: a state label ("about to fail here") and an action label ("do this instead"). A live model that shows how the same policy produces very different intervention rates under a cautious and a loose operator. The four fields every intervention row needs. And a pandas script that computes intervention rate and correction share per operator on a constructed log, then splits corrections for training away from hands-off trials for evaluation.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why a takeover is not just a failure count<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Demonstrations collected up front show the robot what good looks like in the situations the demonstrator happened to visit. A policy running on its own drifts into situations nobody demonstrated, and small errors compound. An operator who takes over at that moment produces exactly the data the original set lacked: the hard state, and the recovery from it. People correcting a policy during its own rollouts and training on the corrections is a recognised family of methods in robot learning. Tonight is about the data side of it: what the log contains, what it silently leaves out, and how not to fool yourself with it.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>In the teleoperation rig of Zhao, Kumar, Levine and Finn (2023), the recorded action is the leader arm the person moves, not the follower arm that obeys it. The same idea makes a takeover usable: if the operator corrects through the same leader arm, the correction lands in the log in the same units as every demonstration. The authors also report 30 to 60 minutes of wall-clock time per task for 10 to 20 minutes of data, partly because of teleoperator mistakes. Corrections come from the same imperfect hands.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Words for tonight<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Rollout.</strong> One run of the policy on the task, from a start state to an outcome.</li>
+          <li><strong>Intervention (takeover).</strong> The moment an operator overrides the policy, plus what they did next.</li>
+          <li><strong>Pre-intervention segment.</strong> The steps just before the takeover: the policy heading toward failure.</li>
+          <li><strong>Corrective segment.</strong> The operator's actions after the takeover, logged like a demonstration.</li>
+          <li><strong>Threshold.</strong> How bad things must look before an operator acts. Every operator has one, written down or not.</li>
+          <li><strong>Hands-off trial.</strong> A rollout where nobody may intervene, run only to measure the policy (practitioner session 7).</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers what an intervention is and the two labels it carries</span>
+      <h2>One takeover, two labels</h2>
+      <span class="tag concept">8 min live</span>
+    </div>
+    <p class="lede">Draw a rollout as lanes on one clock, as in practitioner session 1. The policy holds control from the start. An operator watches. At some moment they decide the policy is about to fail, and take over; from then on, the commands come from a person. That moment and the steps either side of it are the most informative few seconds in the whole log.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 368" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn rollout over 10 seconds. The policy lane runs from 0 to the takeover at about 6.4 seconds; its last stretch before the takeover is hatched as the hard case. A marigold bar marks the operator's hand-over moment. The operator lane runs from the takeover to 10 seconds with corrective actions at 50 Hz. Below, the takeover moment becomes a state label, the policy was about to fail here, and the corrective segment becomes an action label, this is what to do instead, which flows into new demonstration data for the next round.">
+        <defs>
+          <filter id="wrnp8aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="41" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp8aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp8aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp8aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp8aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp8aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp8aK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp8aA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp8aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp8aH" x="30" y="24">ONE CONSTRUCTED WRENFIELD ROLLOUT WITH A TAKEOVER, 10 SECONDS</text>
+
+        <g filter="url(#wrnp8aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="180" y="60" width="312" height="34" rx="6" fill="#FFFFFF"/>
+          <rect x="396" y="60" width="96" height="34" rx="4" fill="url(#wrnp8aHc)"/>
+          <rect x="508" y="106" width="232" height="34" rx="6" fill="#FCEFF7"/>
+          <rect x="494" y="54" width="12" height="92" rx="3" fill="#F4B63C"/>
+          <rect x="300" y="178" width="250" height="46" rx="8" transform="rotate(-0.5 425 201)" fill="#FFFFFF"/>
+          <rect x="580" y="178" width="270" height="46" rx="8" transform="rotate(0.5 715 201)" fill="#FFFFFF"/>
+          <rect x="580" y="252" width="270" height="40" rx="8" transform="rotate(-0.4 715 272)" fill="url(#wrnp8aHc)"/>
+          <path d="M500 148 L500 174 M650 142 L650 174"/>
+          <path d="M715 226 L715 248" marker-end="url(#wrnp8aAr)"/>
+          <!-- doodle: a gripper drifting off the tote edge -->
+          <path d="M790 66 L790 80 M776 80 L804 80 M776 80 L776 100 M804 80 L804 100 M760 110 L820 110" stroke="#B5338B" stroke-width="2.5"/>
+        </g>
+
+        <text class="wrnp8aS" x="500" y="48" text-anchor="middle">takeover at 6.4 s</text>
+        <text class="wrnp8aL" x="168" y="82" text-anchor="end">Policy in control</text>
+        <text class="wrnp8aL" x="168" y="128" text-anchor="end">Operator in control</text>
+        <text class="wrnp8aK" x="404" y="82">hard case</text>
+        <text class="wrnp8aS" x="200" y="82">policy actions</text>
+        <text class="wrnp8aL" x="520" y="128">corrective actions, 50 Hz</text>
+
+        <text class="wrnp8aA" x="180" y="162">0 s</text>
+        <text class="wrnp8aA" x="740" y="162" text-anchor="end">10 s</text>
+
+        <text class="wrnp8aL" x="314" y="197">State label</text>
+        <text class="wrnp8aS" x="314" y="214">the policy was about to fail here</text>
+        <text class="wrnp8aL" x="594" y="197">Action label</text>
+        <text class="wrnp8aS" x="594" y="214">this is what to do instead</text>
+        <text class="wrnp8aK" x="594" y="277">new demonstration data, next round</text>
+
+        <text class="wrnp8aN" x="30" y="318">The marigold moment is one event that writes two labels: where the policy was failing, and the recovery.</text>
+        <text class="wrnp8aN" x="30" y="336">The hatched stretch before it is the hard case. Keep it; it is the state the policy cannot yet handle.</text>
+        <text class="wrnp8aN" x="30" y="358">Constructed rollout; the takeover time is illustrative. 50 Hz follows Zhao et al. (2023).</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold takeover turns a failure into two labels: a state to learn from and an action to imitate.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Label one: the state<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The takeover timestamp says "from here, an experienced person did not trust the policy". That is a label on the state, not on the whole episode. It is sharper than a success flag at the end, which only tells you the rollout as a whole went wrong. It is also noisier: it records what the operator believed, not what would have happened. Nobody learns whether the policy would have recovered on its own, because the operator stopped it. Treat the timestamp as a judgement, with the same care practitioner session 3 gives to a success flag.</p>
+        <p>The hatched stretch before the takeover is where the policy was heading toward trouble. Keep those steps. They are the hard case, and a loader that keeps only the corrective segment throws away the evidence of what the policy did wrong.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Label two: the action<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>After the takeover, the commands come from a person. Logged at the same rate and in the same action space as the original demonstrations, the corrective segment is a new demonstration that starts from a state the old set never visited. That is why the log is worth so much: it fills the gaps in the training data exactly where the current policy shows them.</p>
+        <p>Two conditions make it usable. The corrective actions must be the command sent, in the units the controller accepted (practitioner session 5). And the switch from policy to operator must be marked on the clock, so a loader never mixes policy actions and human actions under one label.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>What a takeover row should hold<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li>Rollout id and policy version, so the correction is tied to the policy that needed it.</li>
+          <li>Takeover time on the episode clock, and the hand-back time if control was returned.</li>
+          <li>Operator id and the threshold policy in force that day (Part 3).</li>
+          <li>Pointers to the pre-intervention segment and the corrective segment, both kept.</li>
+          <li>The outcome after the correction, with its rule.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers what the intervention log hides</span>
+      <h2>The log records the operator too</h2>
+      <span class="tag concept">12 min live</span>
+    </div>
+    <p class="lede">An intervention only happens where an operator noticed trouble and chose to act. So the log is a sample of the policy's failures filtered through one person's attention and one person's threshold. A cautious operator steps in early: many interventions, almost no failures, and a share of takeovers the policy did not need. A loose operator waits: few interventions, and failures that never reach the log because nobody intervened.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 304" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn risk scale from 0 to 1 for the same policy under two operators. A dashed line at 0.65 marks where the policy really fails, hidden from both. The cautious operator, threshold 0.35, takes over from 0.35 upward: the marigold stretch from 0.35 to 0.65 is takeovers the policy did not need. The loose operator, threshold 0.8, lets the policy run until 0.8: the marigold stretch from 0.65 to 0.8 is failures with no takeover, which never appear in the intervention log.">
+        <defs>
+          <filter id="wrnp8bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="43" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp8bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp8bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp8bH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp8bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp8bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp8bK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp8bA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp8bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp8bH" x="30" y="24">THE SAME POLICY, TWO OPERATORS: WHERE EACH ONE ACTS ON A RISK SCALE</text>
+
+        <g filter="url(#wrnp8bSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="200" y="70" width="210" height="34" rx="4" fill="#FFFFFF"/>
+          <rect x="410" y="70" width="180" height="34" rx="4" fill="#F4B63C"/>
+          <rect x="590" y="70" width="210" height="34" rx="4" fill="#FCEFF7"/>
+          <rect x="200" y="150" width="390" height="34" rx="4" fill="#FFFFFF"/>
+          <rect x="590" y="150" width="90" height="34" rx="4" fill="#F4B63C"/>
+          <rect x="680" y="150" width="120" height="34" rx="4" fill="#FCEFF7"/>
+          <path d="M590 58 L590 66 M590 108 L590 146" stroke-dasharray="5 4"/>
+          <path d="M200 214 L800 214 M200 208 L200 220 M410 208 L410 220 M590 208 L590 220 M680 208 L680 220 M800 208 L800 220"/>
+          <!-- doodle: an operator's eye -->
+          <path d="M36 138 Q60 120 84 138 Q60 156 36 138 Z" stroke="#B5338B" stroke-width="2.5"/>
+          <circle cx="60" cy="138" r="5" stroke="#B5338B" stroke-width="2.5"/>
+        </g>
+
+        <text class="wrnp8bS" x="590" y="50" text-anchor="middle">policy really fails above 0.65 (hidden)</text>
+        <text class="wrnp8bL" x="188" y="92" text-anchor="end">Cautious, 0.35</text>
+        <text class="wrnp8bL" x="188" y="172" text-anchor="end">Loose, 0.8</text>
+
+        <text class="wrnp8bS" x="214" y="92">runs alone, fine</text>
+        <text class="wrnp8bK" x="420" y="92">takes over, not needed</text>
+        <text class="wrnp8bS" x="600" y="92">takes over, needed</text>
+        <text class="wrnp8bS" x="214" y="172">runs alone, fine</text>
+        <text class="wrnp8bK" x="600" y="172">fails alone</text>
+        <text class="wrnp8bS" x="690" y="172">takes over</text>
+
+        <text class="wrnp8bS" x="200" y="126">many interventions, few failures, some unnecessary</text>
+        <text class="wrnp8bS" x="200" y="202">few interventions; missed failures never enter the log</text>
+
+        <text class="wrnp8bA" x="200" y="234" text-anchor="middle">0</text>
+        <text class="wrnp8bA" x="410" y="234" text-anchor="middle">0.35</text>
+        <text class="wrnp8bA" x="590" y="234" text-anchor="middle">0.65</text>
+        <text class="wrnp8bA" x="680" y="234" text-anchor="middle">0.8</text>
+        <text class="wrnp8bA" x="800" y="234" text-anchor="middle">1 risk</text>
+
+        <text class="wrnp8bN" x="30" y="268">Both rows are one policy. The intervention rate moves with the operator's threshold, not only with the policy.</text>
+        <text class="wrnp8bN" x="30" y="288">Constructed scale. Marigold: the gap between the operator's threshold and the real failure point.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - both marigold stretches are the same thing: the distance between what the operator acts on and where the policy truly fails.</figcaption>
+    </figure>
+
+    <div class="wk" id="wrnp8-gate">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">Constructed model, declared here: 200 Wrenfield rollouts of one fixed policy (seed 808). Each has a hidden risk between 0 and 1; the policy fails if risk is above 0.65. The operator sees risk plus noise (standard deviation 0.12) and takes over when what they see exceeds the threshold. Move the threshold; the policy never changes.</span>
+      </div>
+      <div class="wk-body">
+        <label class="sql-label" for="wrnp8-th">Operator threshold</label>
+        <div class="ihx-slider">
+          <input type="range" id="wrnp8-th" min="0.2" max="0.9" step="0.05" value="0.5" aria-label="Operator threshold">
+          <output id="wrnp8-thv" for="wrnp8-th">0.50</output>
+        </div>
+        <div id="wrnp8-out"></div>
+        <p class="sql-note" id="wrnp8-verdict">...</p>
+      </div>
+      <div class="wk-foot">Constructed data, computed in this page; your reading will differ as you move the slider. The failure point, the noise and the seed are Wrenfield's invented world, not a measurement of any real operator or robot.</div>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Read the default, then drag<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>At the default threshold of 0.5 the model prints 86 interventions in 200 rollouts, 43.0 per 100. Behind them, 59 rollouts would have failed without help. The operator caught all but 1 of those, and 28 of the 86 takeovers were on rollouts that would have been fine. Now drag the threshold up and down. The 59 never moves, because the policy never moves. The intervention rate swings widely anyway.</p>
+        <p>That is the whole lesson in one slider: an intervention rate is a joint measurement of the policy and the person watching it. Compare two policies by intervention rate with two different operators, or the same operator on a tired day and a fresh one, and you are partly comparing operators.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The judgement inside the log<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Kress-Gazit et al. (2024) ask for "a clear, detailed, and unambiguous definition of success" and recommend that the person who designed the behaviour is not the one who evaluates it. A takeover is a success judgement made in real time, by one person, with no written rule. Zhao et al. (2023) found human demonstrations "inherently stochastic" even from one person; the decision to step in is at least as variable. Write down the threshold policy ("take over when the parcel is within 2 cm of the tote edge"), and expect it to drift anyway.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>In DROID (Khazatsky et al. 2024), collectors marked each of the 76k episodes as success or failure, and that human mark decided what the policy was trained on: failed episodes were excluded, and about 16k unsuccessful trajectories were released separately. The same pattern holds for takeovers: a person's in-the-moment call decides which states become training data.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Disengagements: what we link instead of reteach<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The same trap appears at scale in driving, where a safety driver's takeover is counted as a disengagement and reported per distance driven. How those counts are reported, and why miles between disengagements is a fragile comparison across fleets, is taught in <a href="https://phoebefu6.github.io/learn-autonomous-driving-with-phoebe/">learn autonomous driving</a>. What is particular to a manipulation bench is the scale: tens or hundreds of rollouts, one or two operators, and the corrections fed straight back into the next policy within days.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers logging, training and evaluation done separately</span>
+      <h2>Two paths out of the rollouts</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">The log has two jobs that pull against each other. As training data it should be rich in hard states, which is exactly what operators produce. As evidence about the policy it is biased by the operator. The fix is structural: corrections go to training, and the policy is judged on separate hands-off trials where nobody may intervene. No rollout id appears on both paths.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn data flow in two separated paths. Top path: assisted rollouts, where an operator may take over, flow into the intervention log, which records operator id, threshold and takeover time; from there corrections go to training, highlighted in marigold, and then to the next policy. A dashed wall labelled no rollout id crosses separates the paths. Bottom path: hands-off trials with no takeovers allowed flow into evaluation as in practitioner session 7, and then into a success rate with its interval, never the intervention rate.">
+        <defs>
+          <filter id="wrnp8cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="47" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp8cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp8cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp8cH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp8cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp8cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp8cK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp8cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp8cH" x="30" y="24">TWO PATHS OUT OF THE ROLLOUTS, AND A WALL BETWEEN THEM</text>
+
+        <g filter="url(#wrnp8cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="46" width="170" height="54" rx="8" transform="rotate(-0.5 115 73)" fill="#FFFFFF"/>
+          <rect x="250" y="46" width="200" height="54" rx="8" transform="rotate(0.4 350 73)" fill="url(#wrnp8cHc)"/>
+          <rect x="500" y="46" width="200" height="54" rx="8" transform="rotate(-0.4 600 73)" fill="#F4B63C"/>
+          <rect x="750" y="46" width="110" height="54" rx="8" transform="rotate(0.5 805 73)" fill="#FFFFFF"/>
+          <path d="M202 73 L246 73 M452 73 L496 73 M702 73 L746 73" marker-end="url(#wrnp8cAr)"/>
+          <path d="M30 130 L325 130 M565 130 L860 130" stroke-dasharray="6 5"/>
+          <rect x="30" y="160" width="170" height="54" rx="8" transform="rotate(0.5 115 187)" fill="#FFFFFF"/>
+          <rect x="250" y="160" width="250" height="54" rx="8" transform="rotate(-0.4 375 187)" fill="#FCEFF7"/>
+          <rect x="550" y="160" width="220" height="54" rx="8" transform="rotate(0.4 660 187)" fill="#FFFFFF"/>
+          <path d="M202 187 L246 187 M502 187 L546 187" marker-end="url(#wrnp8cAr)"/>
+          <!-- doodle: a parcel -->
+          <path d="M800 168 L840 168 L840 204 L800 204 Z M800 180 L840 180 M820 168 L820 180" stroke="#B5338B" stroke-width="2.5"/>
+        </g>
+
+        <text class="wrnp8cL" x="44" y="68">Assisted rollouts</text>
+        <text class="wrnp8cS" x="44" y="86">operator may take over</text>
+        <text class="wrnp8cL" x="264" y="68">Intervention log</text>
+        <text class="wrnp8cK" x="264" y="86">operator id, threshold, t</text>
+        <text class="wrnp8cL" x="514" y="68">Corrections to training</text>
+        <text class="wrnp8cK" x="514" y="86">mixed in with care</text>
+        <text class="wrnp8cL" x="764" y="68">Next policy</text>
+        <text class="wrnp8cS" x="764" y="86">next round</text>
+
+        <text class="wrnp8cS" x="445" y="134" text-anchor="middle">no rollout id crosses</text>
+
+        <text class="wrnp8cL" x="44" y="182">Hands-off trials</text>
+        <text class="wrnp8cS" x="44" y="200">no takeovers allowed</text>
+        <text class="wrnp8cL" x="264" y="182">Evaluation, session 7</text>
+        <text class="wrnp8cS" x="264" y="200">paired, same start states</text>
+        <text class="wrnp8cL" x="564" y="182">Success rate, interval</text>
+        <text class="wrnp8cS" x="564" y="200">never the intervention rate</text>
+
+        <text class="wrnp8cN" x="30" y="252">The log feeds the next policy. Separate hands-off trials judge it. Mixing the two scores the operator.</text>
+        <text class="wrnp8cN" x="30" y="272">Constructed Wrenfield flow.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold path is where interventions earn their keep; the bottom path is the only one allowed to say whether the policy got better.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Four habits for the log<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Log the operator and the threshold policy with every intervention.</strong> Without them, a change in the rate cannot be told apart from a change of person or of rule.</li>
+          <li><strong>Keep the pre-intervention segment.</strong> It is the hard case. A loader that keeps only the recovery loses the evidence of the failure.</li>
+          <li><strong>Evaluate on separate, hands-off trials.</strong> Paired start states, a written success rule, an interval (practitioner session 7). Never judge a policy by intervention rate alone.</li>
+          <li><strong>Mix corrections into training with care.</strong> They over-represent hard states, which is the point. They also over-represent the style of whichever operator intervened most. Know each operator's share before you train.</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Why the trials must be separate<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Kress-Gazit et al. (2024) recommend evaluating all policies in one session, interleaved and blind to the evaluator, with matched initial conditions. They also show how fragile a success rate is: the same policy, re-run on the same initial conditions after a lab reorganisation, dropped from 13/20 to 0/8. An assisted rollout cannot meet any of these conditions, because the person deciding when to step in is also shaping the outcome. Only a rollout nobody touches measures the policy.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>DROID (Khazatsky et al. 2024) evaluated policies with 10 rollouts per task setting per method, in A/B comparisons: a separate evaluation, not a by-product of data collection.</p>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ BUILD-ALONG ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>An intervention log in pandas, per operator</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Python 3.10 or later with numpy and pandas. You build a constructed Wrenfield log: three operators with different thresholds, 40 assisted rollouts each, plus 20 hands-off trials. Then you compute the intervention rate and the share of corrective steps per operator, and split corrections for training away from trials for evaluation. The figure draws the per-operator rates the script printed.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn horizontal bars of interventions per 100 rollouts for three operators on the same constructed policy. op-03 with threshold 0.35: 72.5, highlighted in marigold, with 45 percent of all corrective steps. op-07 with threshold 0.50: 50.0, with 31 percent. op-11 with threshold 0.70: 35.0, with 24 percent.">
+        <defs>
+          <filter id="wrnp8dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="53" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp8dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp8dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp8dH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp8dL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp8dS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp8dV { font: 800 16px Inter, sans-serif; fill: #6B0546; }
+          .wrnp8dA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp8dN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp8dH" x="30" y="24">CONSTRUCTED WRENFIELD LOG: INTERVENTIONS PER 100 ROLLOUTS, BY OPERATOR</text>
+        <text class="wrnp8dA" x="720" y="46">share of steps</text>
+
+        <g filter="url(#wrnp8dSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="180" y="56" width="362" height="34" rx="4" transform="rotate(-0.3 361 73)" fill="#F4B63C"/>
+          <rect x="180" y="106" width="250" height="34" rx="4" transform="rotate(0.3 305 123)" fill="#FCEFF7"/>
+          <rect x="180" y="156" width="175" height="34" rx="4" transform="rotate(-0.3 267 173)" fill="#FCEFF7"/>
+          <path d="M180 210 L680 210 M180 204 L180 216 M430 204 L430 216 M680 204 L680 216"/>
+          <!-- doodle: a gripper -->
+          <path d="M840 112 L840 124 M828 124 L852 124 M828 124 L828 142 M852 124 L852 142" stroke="#B5338B" stroke-width="2.5"/>
+        </g>
+
+        <text class="wrnp8dL" x="168" y="78" text-anchor="end">op-03, threshold 0.35</text>
+        <text class="wrnp8dL" x="168" y="128" text-anchor="end">op-07, threshold 0.50</text>
+        <text class="wrnp8dL" x="168" y="178" text-anchor="end">op-11, threshold 0.70</text>
+
+        <text class="wrnp8dV" x="554" y="80">72.5</text>
+        <text class="wrnp8dV" x="442" y="130">50.0</text>
+        <text class="wrnp8dV" x="367" y="180">35.0</text>
+        <text class="wrnp8dL" x="720" y="78">0.45</text>
+        <text class="wrnp8dL" x="720" y="128">0.31</text>
+        <text class="wrnp8dL" x="720" y="178">0.24</text>
+
+        <text class="wrnp8dA" x="180" y="230" text-anchor="middle">0</text>
+        <text class="wrnp8dA" x="430" y="230" text-anchor="middle">50</text>
+        <text class="wrnp8dA" x="680" y="230" text-anchor="middle">100</text>
+
+        <text class="wrnp8dN" x="30" y="258">Same policy, 40 rollouts each, three thresholds. The rate tracks the threshold, and op-03 alone supplies</text>
+        <text class="wrnp8dN" x="30" y="276">45% of the corrective steps the next policy will learn from. Constructed; printed by log.py below.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold operator is not the worst or the best; they are the one whose style dominates the corrections.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Build the constructed log</h4>
+        <p>Three operators watch the same policy. Each rollout has a hidden risk; the operator sees it with noise and takes over above their threshold. A takeover writes a time and a number of corrective steps. Twenty more rollouts are hands-off trials: nobody may intervene.</p>
+        <div class="prompt-box good"><span class="label">log.py, part 1</span>import numpy as np
+import pandas as pd
+
+rng = np.random.default_rng(8)            # constructed Wrenfield log
+FAIL = 0.65                               # hidden: risk above this fails
+ops = {"op-03": 0.35, "op-07": 0.50, "op-11": 0.70}
+
+rows = []
+for op, th in ops.items():
+    for i in range(40):                   # 40 assisted rollouts each
+        risk = rng.uniform()
+        seen = risk + rng.normal(0, 0.12)
+        hit = seen &gt; th
+        rows.append({
+            "rollout_id": f"{op}-{i:02d}", "mode": "assisted",
+            "operator": op, "threshold": th, "intervened": hit,
+            "t_takeover": round(rng.uniform(2, 9), 2) if hit else None,
+            "corrective_steps": int(rng.integers(40, 160)) if hit else 0,
+            "success": bool(hit or risk &lt;= FAIL)})
+for i in range(20):                       # 20 hands-off trials (p7)
+    risk = rng.uniform()
+    rows.append({
+        "rollout_id": f"trial-{i:02d}", "mode": "trial",
+        "operator": None, "threshold": None, "intervened": False,
+        "t_takeover": None, "corrective_steps": 0,
+        "success": bool(risk &lt;= FAIL)})
+log = pd.DataFrame(rows)
+print(log.head(3).to_string(index=False))</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Rate and share, per operator</h4>
+        <p>Group the assisted rollouts by operator. Count interventions and the failures nobody caught, turn interventions into a rate per 100 rollouts, and compute each operator's share of all corrective steps.</p>
+        <div class="prompt-box good"><span class="label">log.py, part 2</span>assisted = log[log["mode"] == "assisted"].copy()
+assisted["failed_alone"] = ~assisted["intervened"] &amp; ~assisted["success"]
+per_op = assisted.groupby("operator").agg(
+    threshold=("threshold", "first"),
+    rollouts=("rollout_id", "count"),
+    interventions=("intervened", "sum"),
+    failed_alone=("failed_alone", "sum"),
+    corrective_steps=("corrective_steps", "sum"))
+per_op["rate_per_100"] = 100 * per_op["interventions"] / per_op["rollouts"]
+per_op["share_of_steps"] = (per_op["corrective_steps"]
+                            / per_op["corrective_steps"].sum()).round(2)
+print(per_op.to_string())</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Two paths: training and evaluation</h4>
+        <p>Corrections go to training; hands-off trials go to evaluation. The assert is the wall from Part 3: no rollout id on both sides.</p>
+        <div class="prompt-box good"><span class="label">log.py, part 3</span>train = assisted[assisted["intervened"]]          # corrections -&gt; training
+evals = log[log["mode"] == "trial"]                # hands-off -&gt; evaluation
+assert not set(train["rollout_id"]) &amp; set(evals["rollout_id"])
+print("training corrections:", len(train),
+      "episodes,", int(train["corrective_steps"].sum()), "steps")
+print("evaluation trials:", len(evals),
+      "| successes:", int(evals["success"].sum()), "of", len(evals))</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Run it and read the output</h4>
+        <p>Run <code>python3 log.py</code> from a scratch folder. The output below is what the script printed when this page was written (numpy 1.26, pandas 2.1). A different numpy version can draw different random numbers; if yours differ, read the shape, not the digits.</p>
+        <div class="prompt-box good"><span class="label">Expected output</span>rollout_id     mode operator  threshold  intervened  t_takeover  corrective_steps  success
+  op-03-00 assisted    op-03       0.35       False         NaN                 0     True
+  op-03-01 assisted    op-03       0.35       False         NaN                 0     True
+  op-03-02 assisted    op-03       0.35        True        5.07                86     True
+          threshold  rollouts  interventions  failed_alone  corrective_steps  rate_per_100  share_of_steps
+operator                                                                                                  
+op-03          0.35        40             29             0              2807          72.5            0.45
+op-07          0.50        40             20             0              1944          50.0            0.31
+op-11          0.70        40             14             1              1523          35.0            0.24
+training corrections: 63 episodes, 6274 steps
+evaluation trials: 20 | successes: 14 of 20</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Extend it: cap one operator's share</h4>
+        <p>Add a step that samples corrections so no operator supplies more than 40 percent of the corrective steps, and print the new shares. Then ask what you lost: op-03's extra corrections were also the earliest looks at hard states.</p>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> The rate column moved from 72.5 to 35.0 across three operators watching one unchanged policy. The only number in that output that speaks about the policy itself is the last line, the hands-off trials, and practitioner session 7 tells you how little 14 of 20 pins down.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">An operator takes over a Wrenfield rollout at 6.4 seconds and finishes the pick by hand. Which two labels does that one event carry?</p>
+      <button class="qopt" type="button">A · A success flag for the episode and a failure flag for the operator</button>
+      <button class="qopt" type="button">B · Only one: the rollout failed</button>
+      <button class="qopt" type="button">C · A state label, "the policy was about to fail here", and an action label, "this is what to do instead"</button>
+      <p class="qwhy">The takeover time marks a state the policy could not handle; the corrective segment is a demonstration starting from that state. Keep both, and keep the steps before the takeover too.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">Policy B shows half the intervention rate of policy A. Why is that not enough to say B is better?</p>
+      <button class="qopt" type="button">A · Because the rate also measures the operator's threshold: a looser operator, or a different one, intervenes less on the same policy</button>
+      <button class="qopt" type="button">B · Because intervention rates are always too small to compare</button>
+      <button class="qopt" type="button">C · Because interventions only happen on successful rollouts</button>
+      <p class="qwhy">An intervention needs someone to notice and choose to act. Change the operator or their threshold and the rate moves while the policy stays still, as the slider showed.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">Why must evaluation trials be separate from the assisted rollouts that feed the intervention log?</p>
+      <button class="qopt" type="button">A · Because evaluation trials need a different robot</button>
+      <button class="qopt" type="button">B · Because in an assisted rollout the operator shapes the outcome, so only rollouts nobody touches, with paired start states and a written rule, measure the policy</button>
+      <button class="qopt" type="button">C · Because corrections are too few to count</button>
+      <p class="qwhy">A rollout the operator rescued cannot say whether the policy would have failed. Hands-off trials, kept off the training path, are the only clean evidence of improvement.</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">Before session 9</span>
+      <h2>Homework</h2>
+    </div>
+    <ol>
+      <li>Change op-11's threshold in <code>log.py</code> to 0.9 and rerun. Read how many failures nobody caught, and confirm they appear nowhere in the training set.</li>
+      <li>Write a one-sentence threshold policy for your own operators ("take over when ..."), specific enough that two people would act at the same moment.</li>
+      <li>Add a <code>pre_steps</code> column that points at the 50 steps before each takeover, and make the loader refuse a correction without it.</li>
+      <li>Pick any human-in-the-loop log you know (support escalations, fraud review, content moderation). Who decides when a person steps in, and is that decision recorded with the case? Practitioner session 9 applies the same denominator question to stop logs.</li>
+    </ol>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Interventions as state and action labels</span><span class="note">Constructed Wrenfield log. The method family is described generically; no published intervention figures are quoted.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The operator's threshold inside the rate</span><span class="note">Constructed model computed in the page (seed 808); prose numbers are the widget's defaults.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Separate evaluation</span><span class="note">Kress-Gazit et al. (2024), arXiv 2409.09491: success definition, designer is not evaluator, 13/20 to 0/8. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Human labels decide training data</span><span class="note">Khazatsky et al. (2024), DROID, arXiv 2403.12945; Zhao, Kumar, Levine and Finn (2023), arXiv 2304.13705. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Per-operator log in pandas</span><span class="note">Constructed Wrenfield log; the build-along output was run and copied.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Evaluating a policy in 20 trials</span><span class="note">Named tonight. Practitioner session 7.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Teleop data quality</span><span class="note">Named tonight. Practitioner session 3.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Disengagements over miles</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-autonomous-driving-with-phoebe/">learn autonomous driving</a>.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>One event, two labels.</strong> The takeover marks the state; the correction is the action.</div>
+      <div class="cheat-item"><strong>The hard case.</strong> Keep the steps before the takeover, not only the recovery.</div>
+      <div class="cheat-item"><strong>Same units.</strong> Corrections logged as the command sent, like every demonstration.</div>
+      <div class="cheat-item"><strong>Hidden filter.</strong> The log holds only failures someone noticed and chose to act on.</div>
+      <div class="cheat-item"><strong>The rate.</strong> Intervention rate measures the operator's threshold as much as the policy.</div>
+      <div class="cheat-item"><strong>Every row.</strong> Operator id and threshold policy, with the takeover time.</div>
+      <div class="cheat-item"><strong>Training mix.</strong> Know each operator's share of corrective steps before you train.</div>
+      <div class="cheat-item"><strong>The wall.</strong> Judge the policy on hands-off trials; no rollout id on both paths.</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>Shared space and stop logs.</strong> Protective stops as data, the cost of being wrong near people, and the denominator that makes a stop rate mean something.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Practitioner session 8 of 10 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="p7-evaluating-a-policy-in-20-trials.html">← Prev: Evaluating a policy in 20 trials</a>
+        <a href="p9-shared-space-and-stop-logs.html">Next: Shared space and stop logs →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/pai-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  var slider = document.getElementById("wrnp8-th");
+  var shown = document.getElementById("wrnp8-thv");
+  var out = document.getElementById("wrnp8-out");
+  var verdict = document.getElementById("wrnp8-verdict");
+  if (!slider || !out || !window.PAI) return;
+  var N = 200, FAIL = 0.65, NOISE = 0.12;
+  // Constructed world: 200 rollouts of one fixed policy, seed 808.
+  var rnd = window.PAI.mulberry32(808), R = [], i;
+  for (i = 0; i < N; i++) {
+    var risk = rnd(), u1 = rnd(), u2 = rnd();
+    var z = Math.sqrt(-2 * Math.log(1 - u1)) * Math.cos(2 * Math.PI * u2);
+    R.push({ risk: risk, seen: risk + NOISE * z });
+  }
+  function run(th) {
+    var iv = 0, missed = 0, unneeded = 0, wouldFail = 0;
+    R.forEach(function (x) {
+      var fails = x.risk > FAIL;
+      if (fails) wouldFail++;
+      if (x.seen > th) { iv++; if (!fails) unneeded++; }
+      else if (fails) missed++;
+    });
+    return { iv: iv, missed: missed, unneeded: unneeded, wouldFail: wouldFail, rate: (100 * iv / N).toFixed(1) };
+  }
+  function render() {
+    var th = Number(slider.value), r = run(th);
+    shown.textContent = th.toFixed(2);
+    var rows = [
+      ["Interventions", r.iv + " of " + N],
+      ["Intervention rate per 100 rollouts", r.rate],
+      ["Failures that happened with no intervention", String(r.missed)],
+      ["Interventions the policy did not need", String(r.unneeded)],
+      ["Rollouts that would fail without help (the policy, fixed)", String(r.wouldFail)]
+    ];
+    var html = '<table class="sql-table"><thead><tr><th>Measure</th><th>Value</th></tr></thead><tbody>';
+    rows.forEach(function (row) { html += "<tr><td>" + row[0] + "</td><td><b>" + row[1] + "</b></td></tr>"; });
+    out.innerHTML = html + "</tbody></table>";
+    verdict.textContent = "Threshold " + th.toFixed(2) + ": " + r.rate + " interventions per 100 rollouts, from a policy whose failures never changed (" + r.wouldFail + " of " + N + ").";
+  }
+  slider.addEventListener("input", render);
+  render();
+})();
+</script>
+<style>
+  #wrnp8-gate .ihx-slider { margin: .2rem 0 .6rem; max-width: 30rem; }
+  #wrnp8-gate table.sql-table { margin: .6rem 0 .2rem; font-size: .85rem; }
+</style>
+</body>
+</html>

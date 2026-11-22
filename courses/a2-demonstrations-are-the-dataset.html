@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Leader session 2 of 6. In imitation learning the label is a person driving the arm. What a demonstration records, what it costs in wall-clock time, what gets thrown away, and who decides what the robot ever sees. Wrenfield Lab is a constructed team. Not investment advice.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Demonstrations are the dataset - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Leader session 2 of 6. The label is a person driving the arm: leader and follower, the 3x wall-clock overhead, and the takes that never reach training.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/a2-demonstrations-are-the-dataset.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Demonstrations are the dataset - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="Ten minutes of demonstration data took thirty to sixty minutes at the rig. Budget the wall-clock, not the data.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Leader session 2 · Demonstrations are the dataset - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Leader session 2 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Leader session 2 of 6</div>
+    <h1>Demonstrations are <span class="accent">the dataset</span></h1>
+    <p class="sub">In a warehouse the label is a column somebody already filled in. In imitation learning the label is a person driving a robot arm, one episode at a time, with someone resetting the table between takes. Tonight is what a demonstration actually records, what it costs in wall-clock hours rather than data minutes, which takes never reach training, and who quietly decides what the robot will ever see. Wrenfield Lab, the running case, is a constructed team; every Wrenfield number is generated in the page, not observed. Nothing here is investment advice.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Working depth</span>
+      <span class="chip audience">Leaders who fund or sign off robotics data work</span>
+      <span class="chip audience">Data people arriving from the warehouse</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:4">3-21 · The label and its cost</span>
+      <span class="a3" style="flex:2">21-28 · What gets thrown away</span>
+      <span class="a4" style="flex:4">28-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Wrenfield Lab, the week the demonstration budget is due</h2>
+    </div>
+    <p class="lede">Wrenfield Lab is constructed: one two-arm robot at a packing bench, a small team, and an analyst who came from a retail warehouse. Last session she learned that the robot is a loop. This week finance asks a simpler question: "how much will the training data cost?" She opens the budget template and finds no line for it. There is no dataset to buy. The data will be made by people moving a pair of arms, at the bench, one parcel at a time, and the cost is mostly the minutes between the recordings.</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> A clear picture of teleoperation: a person moves a leader arm, a follower arm copies it, and the action written into the dataset is the leader's position, not the follower's. A rule of thumb with its source: 10 to 20 minutes of demonstration data took 30 to 60 minutes at the rig, so budget about three times the data minutes. A calculator that turns Wrenfield's task list into rig hours and operator days. An honest view of which takes are thrown away, why the failed ones are still worth keeping, and why the person who collects the data decides what the robot learns. And a one-page collection brief you can hand to any team before they record a single episode.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why the warehouse word "label" misleads here<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A warehouse analyst thinks of a label as a field: churned or not, fraud or not, filled in by a process that ran anyway. Labelling is a cleanup step after the data exists.</p>
+        <p>In imitation learning the data and the label are made in the same moment, by the same person. The robot learns to do what a person did, so every training example is a recording of a person doing the task through the robot. There is no cheaper source to fall back on, no backlog of historical episodes, and no way to label faster than a person can move an arm and reset a table. The demonstration is the expensive part, and it is also the part that sets the ceiling on what the policy can learn.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>Zhao, Kumar, Levine and Finn (2023) built a two-arm teleoperation rig from low-cost off-the-shelf parts and collected 50 demonstrations per task. They report six real tasks learned to 80 to 90 percent success from about 10 minutes of demonstrations each. The same paper says those 10 to 20 minutes of data took 30 to 60 minutes of wall-clock time, because of resets and teleoperator mistakes. The headline is about data minutes; the budget is about rig minutes.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The words that keep coming back<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Imitation learning.</strong> Training a policy to copy what a person did in recorded demonstrations. The demonstrations are the labelled data.</li>
+          <li><strong>Teleoperation.</strong> A person driving the robot from a distance or through a second device, so the robot's own sensors record the attempt.</li>
+          <li><strong>Leader and follower.</strong> In a leader-follower rig a person moves the leader arm by hand and the follower arm, the one that touches the parcel, copies its joint positions.</li>
+          <li><strong>Take.</strong> One recorded attempt during collection. A take becomes a training episode only if it passes the protocol and the success rule.</li>
+          <li><strong>Wall-clock time.</strong> Time at the rig, including resets, retries and mistakes. Always larger than the seconds actually recorded.</li>
+          <li><strong>Coverage.</strong> Which conditions the demonstrations span: lighting, parcel positions, parcel sizes, operators. A policy rarely does better than its coverage.</li>
+          <li><strong>Constructed.</strong> Wrenfield Lab and its numbers are invented so the mechanism is visible. Research numbers are real and cited by author and year.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers teleoperation and what the label is</span>
+      <h2>The label is a person driving the arm</h2>
+      <span class="tag concept">10 min live</span>
+    </div>
+    <p class="lede">Zhao and colleagues (2023) describe the cleanest version of the mechanism. A person holds a small leader arm and moves it. A follower arm, the one with the gripper and the parcel, copies the leader's joint positions, 50 times a second. Four cameras watch. When the episode is written down, the follower's joint readings and the four camera images go in as observations, and the leader's joint positions go in as the action. That choice is the label, and it is deliberate.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 372" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn leader-follower teleoperation rig. Left, the leader arm, moved by a person's hand. An arrow labelled copied at 50 Hz runs to the follower arm, which holds a parcel in its gripper. Right, four cameras watch the follower and the parcel. Below, what gets written to the episode: the action column, highlighted in marigold, is the leader's joint positions, what the person asked for; the follower's joint positions are an observation, where the arm actually is; the four camera images are observations too. Force is not recorded directly: it is implicit in the difference between leader and follower.">
+        <defs>
+          <filter id="wrna2aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="41" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna2aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna2aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna2aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna2aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna2aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna2aK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrna2aA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrna2aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna2aH" x="30" y="30">ONE TELEOPERATED STEP, AND WHAT GETS WRITTEN DOWN</text>
+
+        <g filter="url(#wrna2aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="46" width="240" height="124" rx="8" transform="rotate(-0.5 150 108)" fill="#FFFFFF"/>
+          <rect x="390" y="46" width="240" height="124" rx="8" transform="rotate(0.4 510 108)" fill="#FFFFFF"/>
+          <rect x="650" y="46" width="200" height="124" rx="8" transform="rotate(-0.6 750 108)" fill="#FCEFF7"/>
+          <!-- leader arm strokes -->
+          <path d="M70 160 L120 160 M95 160 L95 132 L150 114 L200 126"/>
+          <circle cx="206" cy="128" r="6" fill="#FFFFFF"/>
+          <!-- follower arm strokes and doodle: a two-finger gripper holding a parcel -->
+          <path d="M430 160 L480 160 M455 160 L455 132 L510 114 L556 126"/>
+          <path d="M556 126 L570 118 M556 126 L570 136" stroke="#B5338B" stroke-width="2.5"/>
+          <rect x="574" y="116" width="34" height="26" rx="2" fill="#FFFFFF"/>
+          <!-- copy link -->
+          <path d="M274 142 L384 142" marker-end="url(#wrna2aAr)"/>
+          <!-- what gets written -->
+          <path d="M150 174 L150 218" marker-end="url(#wrna2aAr)"/>
+          <path d="M510 174 L510 218" marker-end="url(#wrna2aAr)"/>
+          <path d="M750 174 L750 218" marker-end="url(#wrna2aAr)"/>
+          <rect x="30" y="224" width="240" height="78" rx="8" transform="rotate(0.5 150 263)" fill="#F4B63C"/>
+          <rect x="390" y="224" width="240" height="78" rx="8" transform="rotate(-0.4 510 263)" fill="#FCEFF7"/>
+          <rect x="650" y="224" width="200" height="78" rx="8" transform="rotate(0.6 750 263)" fill="url(#wrna2aHc)"/>
+        </g>
+
+        <text class="wrna2aL" x="46" y="72">Leader arm</text>
+        <text class="wrna2aS" x="46" y="90">a person moves it by hand</text>
+        <text class="wrna2aL" x="406" y="72">Follower arm</text>
+        <text class="wrna2aS" x="406" y="90">copies the leader</text>
+        <text class="wrna2aL" x="666" y="72">Four cameras</text>
+        <text class="wrna2aS" x="666" y="90">watch the follower</text>
+        <text class="wrna2aS" x="666" y="106">and the parcel</text>
+        <text class="wrna2aA" x="329" y="132" text-anchor="middle">copied at 50 Hz</text>
+
+        <text class="wrna2aL" x="46" y="248">Action, the label</text>
+        <text class="wrna2aK" x="46" y="268">leader joint positions:</text>
+        <text class="wrna2aK" x="46" y="284">what the person asked for</text>
+        <text class="wrna2aL" x="406" y="248">Observation</text>
+        <text class="wrna2aS" x="406" y="268">follower joint positions:</text>
+        <text class="wrna2aS" x="406" y="284">where the arm actually is</text>
+        <text class="wrna2aL" x="666" y="248">Observation</text>
+        <text class="wrna2aK" x="666" y="268">four camera images</text>
+        <text class="wrna2aK" x="666" y="284">of arm and parcel</text>
+
+        <text class="wrna2aN" x="30" y="326">Force is never written down: it is implicit in the gap between leader and follower.</text>
+        <text class="wrna2aN" x="30" y="344">Zhao, Kumar, Levine and Finn (2023): 50 Hz, four cameras, leader positions as actions. One arm pair drawn.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold column is the label: what the person commanded, read from the leader arm, not where the follower ended up.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why the action is read from the leader<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>When the follower presses a parcel into a box, it cannot follow the leader exactly: the box pushes back. The leader, moved freely by a hand, goes a little further than the follower can. Zhao and colleagues record the leader's joint positions as the action because the force the robot applies is implicit in that difference, through the low-level controller. Record the follower's positions instead and you would teach the policy where the arm ended up, not what it had to ask for to get there.</p>
+        <p>For a leader signing off a dataset, the practical point is simple: "what is the action column, and which device was it read from?" is a question with a right answer, and a team should be able to give it in one sentence. Practitioner session 5 takes the action column apart in detail.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Two demonstrations of the same task are never the same<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Zhao and colleagues describe human demonstrations as "inherently stochastic", even when one person collects all of them: in a two-arm handover the position where the object changes hands is different in every episode. That is not an error to scrub out. It is the variation the policy has to learn to handle, and the paper's training method is built around it.</p>
+        <p>It also means a demonstration set has a style. One operator hands over high and early; another low and late. A policy trained on one person's demonstrations learns that person's habits, and nobody wrote that choice down. Part 3 returns to this as a hidden variable.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Reading "80 to 90 percent from 10 minutes" honestly<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The abstract of Zhao et al. (2023) reports six real-world tasks learned to 80 to 90 percent success with only 10 minutes worth of demonstrations. That is a real and influential result. Read it with three facts from the same paper beside it.</p>
+        <ul>
+          <li><strong>The trial count.</strong> Each real task was evaluated with 25 trials. A rate from 25 trials carries a wide uncertainty band: even 25 out of 25 has a 95 percent Wilson interval of about 87 to 100 percent (derived). Leader session 3 is about exactly this.</li>
+          <li><strong>The wall-clock.</strong> "10 minutes of demonstrations" counts recorded data, not rig time. Per task that was 30 to 60 minutes at the bench.</li>
+          <li><strong>The method mattered.</strong> The same paper shows that the training method, not only the data, made the difference: without one of its components, success on human data fell from 35.3 percent to 2 percent. Ten minutes of demonstrations is not a property of the data alone.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers the cost of a demonstration, small and at scale</span>
+      <h2>What a demonstration costs: count the rig minutes, not the data minutes</h2>
+      <span class="tag concept">8 min live</span>
+    </div>
+    <p class="lede">A demonstration episode is short. In Zhao et al. (2023) each one took 8 to 14 seconds, 400 to 700 time steps at 50 Hz. The cost hides between episodes: someone resets the parcels, fixes a mistake, retries a take that went wrong. That is why 50 demonstrations per task were 10 to 20 minutes of data and 30 to 60 minutes at the rig. Both ends of that range are three times the data minutes (derived). The figure shows where the other two thirds went.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 304" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn bars on a minutes axis from 0 to 60, per task, from Zhao et al. 2023. Data recorded: 10 to 20 minutes for 50 demonstrations of 8 to 14 seconds each. Wall-clock at the rig: 30 to 60 minutes. The low end split: 10 minutes of data and 20 minutes, in marigold, of resets and operator mistakes. Both ends are about three times the data. Note: in a 6-person user study, teleoperating at 5 Hz instead of 50 Hz took 62 percent longer.">
+        <defs>
+          <filter id="wrna2bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="53" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna2bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna2bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna2bH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna2bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna2bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna2bK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrna2bV { font: 800 16px Inter, sans-serif; fill: #6B0546; }
+          .wrna2bA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrna2bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna2bH" x="30" y="30">MINUTES PER TASK, 50 DEMONSTRATIONS EACH</text>
+
+        <g filter="url(#wrna2bSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M248 44 L248 196 L700 196"/>
+          <path d="M325 196 L325 202 M400 196 L400 202 M475 196 L475 202 M550 196 L550 202 M625 196 L625 202 M700 196 L700 202"/>
+          <rect x="250" y="54" width="75" height="24" rx="4" fill="#FCEFF7"/>
+          <rect x="325" y="54" width="75" height="24" rx="4" fill="url(#wrna2bHc)"/>
+          <rect x="250" y="106" width="225" height="24" rx="4" fill="#FFFFFF"/>
+          <rect x="475" y="106" width="225" height="24" rx="4" fill="url(#wrna2bHc)"/>
+          <rect x="250" y="158" width="75" height="24" rx="4" fill="#FCEFF7"/>
+          <rect x="325" y="158" width="150" height="24" rx="4" fill="#F4B63C"/>
+          <!-- doodle: a stopwatch -->
+          <circle cx="836" cy="40" r="14" fill="#FFFFFF"/>
+          <path d="M836 40 L836 31 M836 40 L843 44 M832 22 L840 22" stroke="#B5338B"/>
+        </g>
+
+        <text class="wrna2bL" x="236" y="70" text-anchor="end">Data recorded</text>
+        <text class="wrna2bS" x="236" y="86" text-anchor="end">episodes of 8 to 14 s</text>
+        <text class="wrna2bL" x="236" y="122" text-anchor="end">Wall-clock at the rig</text>
+        <text class="wrna2bS" x="236" y="138" text-anchor="end">resets and retries included</text>
+        <text class="wrna2bL" x="236" y="174" text-anchor="end">The low end, split</text>
+        <text class="wrna2bS" x="236" y="190" text-anchor="end">30 minutes at the rig</text>
+
+        <text class="wrna2bV" x="412" y="72">10 to 20 min</text>
+        <text class="wrna2bV" x="712" y="124">30 to 60 min</text>
+        <text class="wrna2bK" x="260" y="174">data</text>
+        <text class="wrna2bK" x="336" y="174">resets, mistakes</text>
+        <text class="wrna2bV" x="487" y="176">+20 min</text>
+
+        <text class="wrna2bA" x="250" y="216" text-anchor="middle">0</text>
+        <text class="wrna2bA" x="325" y="216" text-anchor="middle">10</text>
+        <text class="wrna2bA" x="400" y="216" text-anchor="middle">20</text>
+        <text class="wrna2bA" x="475" y="216" text-anchor="middle">30</text>
+        <text class="wrna2bA" x="550" y="216" text-anchor="middle">40</text>
+        <text class="wrna2bA" x="625" y="216" text-anchor="middle">50</text>
+        <text class="wrna2bA" x="700" y="216" text-anchor="middle">60 min</text>
+
+        <text class="wrna2bN" x="30" y="250">Zhao et al. (2023): 10 to 20 min of data per task took 30 to 60 min. Both ends are 3x the data (derived).</text>
+        <text class="wrna2bN" x="30" y="268">Hatching marks the spread of each range. Their user study (6 people): teleoperating at 5 Hz instead of 50 Hz</text>
+        <text class="wrna2bN" x="30" y="286">took 62 percent longer. A sluggish rig is a cost line, not a detail.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold bar is the part no data dashboard shows: two of every three minutes at the rig produce no training data.</figcaption>
+    </figure>
+
+    <div class="wk" id="wrna2-cost">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">A constructed Wrenfield collection-cost calculator, computed in your browser. Change the task list and the rates; it prints data hours, rig hours, operator days and a cost in abstract cost units. The overhead default of 3 is derived from Zhao et al. (2023); every other default is a constructed placeholder.</span>
+      </div>
+      <div class="wk-body">
+        <div class="wrna2-grid">
+          <div>
+            <label class="sql-label" for="wrna2-tasks">Tasks to teach</label>
+            <input class="sql-code" id="wrna2-tasks" type="number" min="1" max="200" step="1" value="4">
+          </div>
+          <div>
+            <label class="sql-label" for="wrna2-demos">Demonstrations per task</label>
+            <input class="sql-code" id="wrna2-demos" type="number" min="1" max="5000" step="1" value="50">
+          </div>
+          <div>
+            <label class="sql-label" for="wrna2-secs">Seconds per episode</label>
+            <input class="sql-code" id="wrna2-secs" type="number" min="1" max="600" step="1" value="12">
+          </div>
+          <div>
+            <label class="sql-label" for="wrna2-over">Overhead multiplier (rig time / data time)</label>
+            <input class="sql-code" id="wrna2-over" type="number" min="1" max="20" step="0.5" value="3">
+          </div>
+          <div>
+            <label class="sql-label" for="wrna2-day">Operator hours per day</label>
+            <input class="sql-code" id="wrna2-day" type="number" min="1" max="12" step="0.5" value="8">
+          </div>
+          <div>
+            <label class="sql-label" for="wrna2-rate">Cost units per operator hour</label>
+            <input class="sql-code" id="wrna2-rate" type="number" min="0" max="10000" step="1" value="10">
+          </div>
+        </div>
+        <div id="wrna2-out"></div>
+        <p class="sql-note" id="wrna2-verdict">...</p>
+      </div>
+      <div class="wk-foot">Constructed, declared here: 4 tasks, 12-second episodes, an 8-hour operator day and 10 cost units per operator hour are Wrenfield placeholders, not observations, and cost units are not any currency. The overhead of 3 is derived: Zhao et al. (2023) report that 10 to 20 minutes of data took 30 to 60 minutes, about 3x. Your numbers will differ.</div>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Reading the calculator at its defaults<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>At the defaults, one task is 50 episodes of 12 seconds: 10 minutes of data and 30 minutes at the rig, the low end of what Zhao and colleagues report. Four tasks make 0.67 hours of data, 2.0 rig hours, 0.25 operator days and 20 cost units. Small, on purpose: the point is the ratio, not the total.</p>
+        <p>Now change one thing. Double the demonstrations per task and every line doubles. Change the overhead from 3 to 2 and the rig hours fall by a third, with no change to the data. The overhead is usually the lever a team can pull most cheaply: faster resets, a second set of parcels laid out in advance, fewer operator mistakes. Their user study adds one more: at 5 Hz instead of 50 Hz, teleoperation took 62 percent longer, so a laggy rig shows up directly in this calculator's overhead.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The same arithmetic at scale<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Khazatsky and colleagues (2024) collected DROID, a large in-the-wild manipulation dataset: 76k demonstration trajectories, about 350 hours of interaction, across 564 scenes, by 50 data collectors over 12 months, on the same hardware setup replicated 18 times. Two divisions put that in budget terms (both derived): 350 hours across 76k trajectories is about 17 seconds per trajectory, and 350 hours across 50 collectors is about 7 hours of recorded data each.</p>
+        <p>Seven recorded hours per person over a year sounds small until you apply Part 2's ratio. The recorded hours are the data, not the year of travel, setup, scene changes and resets behind them. The paper reports the data; the rest of the cost is the part a budget has to estimate.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>What the calculator leaves out<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Rejected takes.</strong> The calculator counts the demonstrations you keep. Part 3 shows the takes that are recorded and then excluded; they cost rig time too. Raise the overhead to cover them, or raise demonstrations per task.</li>
+          <li><strong>Hardware time.</strong> A rig in use is a rig nobody else can evaluate on. Collection and evaluation compete for the same bench.</li>
+          <li><strong>Learning curve.</strong> New operators make more mistakes. Zhao and colleagues name teleoperator mistakes as one reason for the overhead.</li>
+          <li><strong>Coverage.</strong> The calculator assumes you know how many demonstrations a task needs. You find out partly by evaluating, which is leader session 3.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers what gets thrown away and who collects</span>
+      <h2>What never reaches training, and who decided</h2>
+      <span class="tag concept">7 min live</span>
+    </div>
+    <p class="lede">Not every take becomes a training episode. In DROID, Khazatsky and colleagues (2024) had each collector mark every episode a success or a failure, excluded failed episodes from policy training, and released about 16k unsuccessful trajectories separately. Their protocol also aimed to prevent mistakes such as "camera cannot see robot" and "teleoperator in camera view". The funnel is where a dataset's shape is decided, and much of it is decided by the person holding the leader arm.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 344" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn funnel from takes recorded to episodes kept. Takes recorded pass protocol checks; rejects go right with reasons camera cannot see robot and teleoperator in camera view. Then the collector marks success or failure; failed takes go right into a marigold pile, failed but informative, excluded from training and released separately, about 16k in DROID. What remains, hatched, is kept for training: successful takes only. Note: no gate catches operator style or which lighting and positions were covered.">
+        <defs>
+          <filter id="wrna2cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="67" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna2cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna2cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna2cH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna2cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna2cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna2cK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrna2cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna2cH" x="30" y="30">FROM TAKES RECORDED TO EPISODES KEPT</text>
+
+        <g filter="url(#wrna2cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="100" y="50" width="480" height="40" rx="8" transform="rotate(-0.4 340 70)" fill="#FFFFFF"/>
+          <rect x="130" y="110" width="420" height="40" rx="8" transform="rotate(0.4 340 130)" fill="#FFFFFF"/>
+          <rect x="160" y="170" width="360" height="40" rx="8" transform="rotate(-0.3 340 190)" fill="#FFFFFF"/>
+          <rect x="200" y="230" width="280" height="46" rx="8" transform="rotate(0.5 340 253)" fill="url(#wrna2cHc)"/>
+          <path d="M340 92 L340 106" marker-end="url(#wrna2cAr)"/>
+          <path d="M340 152 L340 166" marker-end="url(#wrna2cAr)"/>
+          <path d="M340 212 L340 226" marker-end="url(#wrna2cAr)"/>
+          <path d="M552 130 L600 130" marker-end="url(#wrna2cAr)"/>
+          <path d="M522 190 L600 196" marker-end="url(#wrna2cAr)"/>
+          <rect x="606" y="100" width="244" height="54" rx="8" transform="rotate(0.6 728 127)" fill="#FFFFFF"/>
+          <rect x="606" y="166" width="244" height="66" rx="8" transform="rotate(-0.5 728 199)" fill="#F4B63C"/>
+          <!-- doodle: a camera -->
+          <rect x="796" y="20" width="40" height="24" rx="4" fill="#FFFFFF"/>
+          <circle cx="816" cy="32" r="7" stroke="#B5338B"/>
+        </g>
+
+        <text class="wrna2cL" x="340" y="75" text-anchor="middle">Takes recorded at the rig</text>
+        <text class="wrna2cL" x="340" y="135" text-anchor="middle">Protocol checks</text>
+        <text class="wrna2cL" x="340" y="195" text-anchor="middle">Collector marks success or failure</text>
+        <text class="wrna2cL" x="340" y="250" text-anchor="middle">Kept for training</text>
+        <text class="wrna2cK" x="340" y="266" text-anchor="middle">successful takes only</text>
+
+        <text class="wrna2cL" x="620" y="120">Rejected: protocol</text>
+        <text class="wrna2cS" x="620" y="136">camera cannot see robot,</text>
+        <text class="wrna2cS" x="620" y="150">teleoperator in camera view</text>
+        <text class="wrna2cL" x="620" y="186">Failed, but informative</text>
+        <text class="wrna2cK" x="620" y="204">excluded from training,</text>
+        <text class="wrna2cK" x="620" y="220">released separately</text>
+
+        <text class="wrna2cN" x="30" y="300">DROID (Khazatsky et al. 2024): 76k trajectories; about 16k unsuccessful ones released separately.</text>
+        <text class="wrna2cN" x="30" y="318">No gate catches operator style, or which lighting and positions got covered: the collector decides those.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the hatched pile is what the policy learns from; the marigold pile is what it never sees, and the most useful evidence of where the task is hard.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why keep the failures you will not train on<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Failed takes are excluded from training because imitation learning copies what is in the data: teach it a failure and it learns to fail. But the failures are the best map of where the task is hard. If most failed takes cluster at the table edge or in dim light, that is the condition the policy will struggle with too, and the condition that needs more demonstrations. DROID kept that evidence and released it separately rather than deleting it.</p>
+        <p>The warehouse parallel is a rejected-records table. Nobody trains a revenue model on malformed orders, and nobody sensible deletes them either; they tell you where the pipeline breaks. Each failed take should carry a reason, not just a cross.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The collector is a hidden variable<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Two things in the funnel are not gates at all. <strong>Operator style:</strong> demonstrations are "inherently stochastic" even from one person (Zhao et al. 2023), and different operators move differently, so a set collected mostly by one person teaches that person's habits. <strong>Coverage:</strong> which lighting, which parcel positions near the edges, which parcel sizes. Whoever collects decides, usually by what is convenient that afternoon. The protocol check catches a camera that cannot see the robot; nothing catches a dataset that never saw a dim evening.</p>
+        <p>The fix is managerial, not statistical: write the coverage down before collection, rotate operators across it, and record which operator and which condition produced each take. That is the build-along.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Where serious people disagree<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Whether collecting demonstrations at ever larger scale is, on its own, the route to general-purpose robots is an open question, and people close to the work disagree. When such robots arrive is contested too; no page here gives a date.</p>
+        <p>The published evidence is narrower and mixed. The Open X-Embodiment collaboration (2023) pooled more than 1M real robot trajectories from 60 datasets across 22 robot embodiments. A model trained on the pool did 50 percent better on average than the original methods on small-data robots, and on large-data robots it underfit and did worse. More demonstrations helped some robots and not others in the same study (practitioner session 4). A leader should hear "it depends on the robot, the data and the model" as the honest answer for now, and fund coverage and quality alongside volume.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ BUILD-ALONG ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Wrenfield's one-page demonstration collection brief</h2>
+      <span class="tag demo">★ 17 min · everyone builds</span>
+    </div>
+    <p class="lede">No code. You write the brief Wrenfield's team would hand every operator before the first take: what tasks, what counts as success, which conditions must be covered, how operators rotate, what to log when a take is rejected, and what it will cost. The figure is a filled example; the grid on the right is the part most briefs leave out.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 324" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn one-page brief beside a coverage grid. The brief lists six lines: tasks, pick, pack, hand over; success rule, one written rule per task; conditions, the grid; operator rotation, four operators, every cell mixed; rejects, a reason code for every reject; budget, data hours times 3 equals rig hours. The coverage grid has six condition rows, dim light, normal light, centre of table, near the edge, small parcels, large parcels, against four operators. Hatched cells are planned. The near the edge row, highlighted in marigold, is covered by only one operator: a hole a single success rate would hide.">
+        <defs>
+          <filter id="wrna2dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="79" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna2dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna2dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna2dH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna2dL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna2dS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna2dA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrna2dN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna2dH" x="30" y="30">THE ONE-PAGE BRIEF</text>
+        <text class="wrna2dH" x="450" y="30">COVERAGE: CONDITIONS x OPERATORS</text>
+
+        <g filter="url(#wrna2dSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="44" width="380" height="212" rx="8" transform="rotate(-0.4 220 150)" fill="#FFFFFF"/>
+          <path d="M46 106 L394 106 M46 134 L394 134 M46 162 L394 162 M46 190 L394 190 M46 218 L394 218" stroke="#D9C6D1" stroke-width="1.2"/>
+          <!-- marigold row label -->
+          <rect x="448" y="158" width="136" height="30" rx="5" fill="#F4B63C"/>
+          <!-- row 1 dim light -->
+          <rect x="590" y="68" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="650" y="68" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="710" y="68" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="770" y="68" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <!-- row 2 normal light -->
+          <rect x="590" y="98" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="650" y="98" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="710" y="98" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="770" y="98" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <!-- row 3 centre -->
+          <rect x="590" y="128" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="650" y="128" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="710" y="128" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="770" y="128" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <!-- row 4 near the edge: one operator only -->
+          <rect x="590" y="158" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="650" y="158" width="60" height="30" fill="#FFFFFF"/>
+          <rect x="710" y="158" width="60" height="30" fill="#FFFFFF"/>
+          <rect x="770" y="158" width="60" height="30" fill="#FFFFFF"/>
+          <!-- row 5 small parcels -->
+          <rect x="590" y="188" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="650" y="188" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="710" y="188" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="770" y="188" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <!-- row 6 large parcels -->
+          <rect x="590" y="218" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="650" y="218" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="710" y="218" width="60" height="30" fill="url(#wrna2dHc)"/>
+          <rect x="770" y="218" width="60" height="30" fill="#FFFFFF"/>
+          <!-- doodle: a parcel -->
+          <rect x="836" y="12" width="30" height="22" rx="2" fill="#FFFFFF"/>
+          <path d="M836 21 L866 21 M851 12 L851 34" stroke="#B5338B"/>
+        </g>
+
+        <text class="wrna2dL" x="46" y="70">1 Tasks</text>
+        <text class="wrna2dS" x="200" y="70">pick, pack, hand over</text>
+        <text class="wrna2dL" x="46" y="98">2 Success rule</text>
+        <text class="wrna2dS" x="200" y="98">one written rule per task</text>
+        <text class="wrna2dL" x="46" y="126">3 Conditions</text>
+        <text class="wrna2dS" x="200" y="126">the grid on the right</text>
+        <text class="wrna2dL" x="46" y="154">4 Operator rotation</text>
+        <text class="wrna2dS" x="200" y="154">4 operators, every cell mixed</text>
+        <text class="wrna2dL" x="46" y="182">5 Rejects</text>
+        <text class="wrna2dS" x="200" y="182">a reason code for every one</text>
+        <text class="wrna2dL" x="46" y="210">6 Budget</text>
+        <text class="wrna2dS" x="200" y="210">data hours x 3 = rig hours</text>
+        <text class="wrna2dS" x="46" y="240">Constructed Wrenfield example</text>
+
+        <text class="wrna2dA" x="620" y="60" text-anchor="middle">Op A</text>
+        <text class="wrna2dA" x="680" y="60" text-anchor="middle">Op B</text>
+        <text class="wrna2dA" x="740" y="60" text-anchor="middle">Op C</text>
+        <text class="wrna2dA" x="800" y="60" text-anchor="middle">Op D</text>
+        <text class="wrna2dL" x="456" y="88">Dim light</text>
+        <text class="wrna2dL" x="456" y="118">Normal light</text>
+        <text class="wrna2dL" x="456" y="148">Centre of table</text>
+        <text class="wrna2dL" x="456" y="178">Near the edge</text>
+        <text class="wrna2dL" x="456" y="208">Small parcels</text>
+        <text class="wrna2dL" x="456" y="238">Large parcels</text>
+
+        <text class="wrna2dN" x="30" y="282">Hatched = demonstrations planned. The marigold row is a hole: one operator, one style, near the edge.</text>
+        <text class="wrna2dN" x="30" y="300">One success rate averaged over the grid would hide it. Constructed plan; your grid will differ.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold row is the gap a brief exists to catch: a condition the robot will meet that only one person ever demonstrated.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>List the tasks, one line each</h4>
+        <p>Name each task as an operator would hear it: "pick a parcel from the tray", "pack it in the box", "hand it to the other arm". If a task needs two sentences, it is two tasks. Wrenfield's example has three to four; yours may have more.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Write the success rule before anyone records</h4>
+        <p>One written rule per task, specific enough that two people would mark the same take the same way: "parcel inside the box, lid line clear, nothing dropped". The collector marks each take against it, as DROID's collectors did. Leader session 3 shows why the person who wrote the rule should not be the only one judging it.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Draw the coverage grid</h4>
+        <p>Rows are the conditions the robot will meet: lighting (dim, normal), positions (centre, near the edges), parcel sizes (small, large). Columns are operators. Mark how many demonstrations each cell gets. A blank cell is a decision; make it on purpose, not by convenience.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Set the operator rotation</h4>
+        <p>Every condition row should have more than one operator, so the policy learns the task and not one person's style. Record the operator id on every take. Then a later failure can be traced to a condition, an operator or both.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Decide what to log for rejects</h4>
+        <p>Every rejected take gets a reason code, not just a cross: "camera cannot see robot", "teleoperator in camera view", "parcel dropped", "reset incomplete", "task failed". Keep the failed takes, as DROID did, in a separate store. They are where the task is hard.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Put the budget in from the calculator</h4>
+        <p>Enter your tasks, demonstrations per task and episode length into the calculator in Part 2. Copy the data hours, rig hours and operator days onto the brief, and write the overhead you assumed next to them. If your rejects will be frequent, raise the overhead rather than pretending they are free. Your numbers will differ from Wrenfield's.</p>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> Before approving any demonstration budget, ask for three things on one page: the success rule, the coverage grid with operators across it, and the rig hours rather than the data hours. A team that cannot produce the grid will collect whatever was convenient, and the robot will learn exactly that.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">In a leader-follower teleoperation rig like the one in Zhao et al. (2023), which reading is recorded as the action?</p>
+      <button class="qopt" type="button">A · The follower arm's joint positions, because that is where the robot actually went</button>
+      <button class="qopt" type="button">B · The camera images, because the policy learns from pixels</button>
+      <button class="qopt" type="button">C · The leader arm's joint positions, because the force applied is implicit in the difference between leader and follower</button>
+      <p class="qwhy">The follower's positions and the camera images are observations. The leader's positions are what the person commanded; recording the follower instead would teach where the arm ended up, not what it had to ask for.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">Zhao and colleagues report 10 to 20 minutes of demonstration data per task but 30 to 60 minutes of wall-clock time. Why the gap?</p>
+      <button class="qopt" type="button">A · Resets between takes and teleoperator mistakes take rig time but produce no kept data</button>
+      <button class="qopt" type="button">B · The data was compressed after recording</button>
+      <button class="qopt" type="button">C · The robot ran three times slower than the person</button>
+      <p class="qwhy">The paper names resets and teleoperator mistakes. Both ends of the range are about 3x the data minutes, which is why a budget should count rig minutes.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">DROID excluded failed episodes from policy training. Why release about 16k unsuccessful trajectories separately instead of deleting them?</p>
+      <button class="qopt" type="button">A · To make the dataset look larger</button>
+      <button class="qopt" type="button">B · Imitation learning would copy the failures, but they still show where the task is hard and can serve other uses</button>
+      <button class="qopt" type="button">C · Because failed episodes are the same as successful ones</button>
+      <p class="qwhy">Training on failures teaches the policy to fail, so they stay out of the training set. Kept separately, they are a map of hard conditions, the robot data equivalent of a rejected-records table.</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">Before session 3</span>
+      <h2>Homework</h2>
+    </div>
+    <p class="lede">Twenty minutes, on a budget and a grid.</p>
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Price one task you know</h4>
+        <p>Pick any physical task you understand (packing an order, sorting returns). Estimate seconds per attempt and a reset time, then put them in the calculator. Write the overhead you think is honest and the one sentence that justifies it.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Find the hole in your grid</h4>
+        <p>Draw a coverage grid for that task: four conditions by three people. Mark the cell your team would most likely skip because it is inconvenient, and write what the robot would do the first time it meets that condition. Leader session 3 asks how many trials it would take to notice.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Teleoperation and the label</span><span class="note">Zhao, Kumar, Levine and Finn (2023), arXiv 2304.13705: leader joint positions as actions, force implicit in the difference, 50 Hz, 4 cameras, low-cost off-the-shelf parts, stochastic demonstrations. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The cost of a demonstration</span><span class="note">Zhao et al. (2023): 50 demos per task, 10 to 20 min of data, 30 to 60 min wall-clock, 8 to 14 s episodes, 5 Hz 62 percent slower; 80 to 90 percent from 10 minutes, 25 real trials per task. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Demonstrations at scale, and what is thrown away</span><span class="note">Khazatsky et al. (2024), DROID, arXiv 2403.12945: 76k trajectories, about 350 h, 50 collectors, 12 months, 564 scenes; failed episodes excluded, about 16k released separately; protocol mistakes. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Wrenfield collection-cost calculator</span><span class="note">Constructed and computed in the page; overhead of 3 derived from Zhao et al. (2023). Cost units are not a currency.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Teleop data quality</span><span class="note">Operator variance and reject reasons named tonight. Practitioner session 3.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Actions as data</span><span class="note">The action column named tonight. Practitioner session 5.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Pooling demonstrations across robots</span><span class="note">Open X-Embodiment Collaboration (2023), arXiv 2310.08864, named tonight. Practitioner session 4.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Labelling data with language models</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-ai-evals-with-phoebe/">learn AI evals</a>.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Real companies, robots or products</span><span class="note">Out of scope by design. Wrenfield is constructed; nothing here is investment advice or a view on any company.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>The one sentence.</strong> In imitation learning the label is a person driving the arm, and the data and the label are made in the same moment.</div>
+      <div class="cheat-item"><strong>Leader, not follower.</strong> The action is the leader's joint positions; force is implicit in the gap to the follower.</div>
+      <div class="cheat-item"><strong>Same task, different demos.</strong> Human demonstrations are stochastic even from one person; that variation is part of the data.</div>
+      <div class="cheat-item"><strong>Budget rig minutes.</strong> 10 to 20 min of data took 30 to 60 min at the rig: about 3x.</div>
+      <div class="cheat-item"><strong>Slow rigs cost.</strong> Teleoperating at 5 Hz instead of 50 Hz took 62 percent longer.</div>
+      <div class="cheat-item"><strong>Keep the failures.</strong> Exclude them from training, store them with a reason; they map where the task is hard.</div>
+      <div class="cheat-item"><strong>The collector decides.</strong> Operator style and coverage pass every gate unseen; write the grid and rotate operators.</div>
+      <div class="cheat-item"><strong>Read headlines with their counts.</strong> "80 to 90 percent from 10 minutes" came from 25 real trials per task.</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>What a success rate can and cannot tell you.</strong> Why 18 of 20 and 15 of 20 may not be different policies, and how many trials it takes to know.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Leader session 2 of 6 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="a1-the-robot-is-a-data-loop.html">← Prev: The robot is a data loop</a>
+        <a href="a3-what-a-success-rate-can-and-cannot-tell-you.html">Next: What a success rate can and cannot tell you →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  var ids = ["tasks", "demos", "secs", "over", "day", "rate"];
+  var el = {};
+  ids.forEach(function (k) { el[k] = document.getElementById("wrna2-" + k); });
+  var out = document.getElementById("wrna2-out");
+  var verdict = document.getElementById("wrna2-verdict");
+  if (!out || !el.tasks) return;
+  function num(k, lo) {
+    var v = parseFloat(el[k].value);
+    if (!isFinite(v) || v < lo) v = lo;
+    return v;
+  }
+  function f(x, d) { return x.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d }); }
+  function render() {
+    var tasks = Math.round(num("tasks", 1));
+    var demos = Math.round(num("demos", 1));
+    var secs = num("secs", 1);
+    var over = num("over", 1);
+    var day = num("day", 1);
+    var rate = num("rate", 0);
+    var dataH = tasks * demos * secs / 3600;
+    var rigH = dataH * over;
+    var days = rigH / day;
+    var cost = rigH * rate;
+    var perTaskData = demos * secs / 60;
+    var perTaskRig = perTaskData * over;
+    out.innerHTML = '<table class="sql-table"><thead><tr><th>Measure</th><th>Value</th></tr></thead><tbody>' +
+      "<tr><td>Per task: data minutes / rig minutes</td><td>" + f(perTaskData, 1) + " / " + f(perTaskRig, 1) + "</td></tr>" +
+      "<tr><td>Data hours (recorded episodes)</td><td><b>" + f(dataH, 2) + "</b></td></tr>" +
+      "<tr><td>Wall-clock hours at the rig</td><td><b>" + f(rigH, 2) + "</b></td></tr>" +
+      "<tr><td>Operator days</td><td><b>" + f(days, 2) + "</b></td></tr>" +
+      "<tr><td>Cost, abstract cost units (constructed)</td><td>" + f(cost, 0) + "</td></tr></tbody></table>";
+    var hidden = rigH - dataH;
+    verdict.textContent = f(hidden, 2) + " of the " + f(rigH, 2) + " rig hours record nothing: resets, retries and mistakes. " +
+      "Lowering the overhead from " + f(over, 1) + " is the one change that cuts cost without cutting data. Constructed; your numbers will differ.";
+  }
+  ids.forEach(function (k) { el[k].addEventListener("input", render); });
+  render();
+})();
+</script>
+<style>
+  #wrna2-cost .wrna2-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); gap: .2rem .8rem; }
+  #wrna2-cost .sql-code { border: 1px solid var(--hairline); border-radius: 8px; max-width: 14rem; padding: .35rem .6rem; }
+  #wrna2-cost table.sql-table { margin: .8rem 0 .2rem; font-size: .85rem; }
+</style>
+</body>
+</html>

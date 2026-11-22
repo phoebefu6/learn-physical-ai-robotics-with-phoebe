@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Sixteen sessions on physical AI and robotics as a data problem: episodes on one clock, demonstrations as the dataset, coordinate frames and calibration, mixing data across robots, actions as data, domain randomization, success rates from 20 trials, intervention and stop logs, and a sim-to-real bench with an anti-lever and a break button. Wrenfield Lab is constructed. Free. Not investment advice.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Learn Physical AI &amp; Robotics with Phoebe">
+<meta property="og:description" content="A policy that scores 100 percent in simulation grasps 29 of 50 real parcels. Randomize lighting, then the camera, then mix in 20 real demos: 49 of 50. Bump the camera 2 cm: 0.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Learn Physical AI &amp; Robotics with Phoebe">
+<meta name="twitter:description" content="What changes when the model's output moves a physical arm. Sixteen sessions for data people and the leaders who fund them.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Learn Physical AI &amp; Robotics with Phoebe</title>
+<link rel="stylesheet" href="assets/style.css?v=1">
+<style>
+  .stats-row { display: flex; gap: 2.4rem; margin-top: 1.5rem; flex-wrap: wrap; }
+  .stat b { display: block; font-size: 2.1rem; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; color: var(--indigo-deep); }
+  .stat span { font-size: .72rem; opacity: 1; text-transform: uppercase; letter-spacing: .09em; font-weight: 600; color: var(--ink); }
+
+  .course-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); gap: 1rem; margin-top: 1.5rem; }
+  .course-card {
+    border: 1px solid var(--hairline);
+    border-top: 4px solid var(--diff, var(--indigo));
+    border-radius: var(--radius);
+    padding: 1.2rem 1.3rem 1.1rem;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    text-decoration: none;
+    color: var(--ink);
+    background: #fff;
+    transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+    position: relative;
+  }
+  .course-card:hover { border-color: var(--indigo-soft); border-top-color: var(--diff, var(--indigo)); box-shadow: 0 8px 28px rgba(155,8,101,.16); transform: translateY(-3px); }
+  .course-card .cicon { font-size: 1.7rem; line-height: 1; }
+  .course-card .cnum { font-size: .72rem; font-weight: 700; color: var(--indigo); text-transform: uppercase; letter-spacing: .1em; }
+  .course-card h3 { font-size: 1.05rem; font-weight: 800; line-height: 1.3; }
+  .course-card p { font-size: .85rem; color: var(--muted); flex: 1; }
+  .course-card .meta { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+  .diff-legend { display: flex; gap: 1rem; margin-top: 1.6rem; font-size: .74rem; color: var(--muted); font-weight: 600; flex-wrap: wrap; }
+  .diff-legend i { display: inline-block; width: .85rem; height: .35rem; border-radius: 999px; margin-right: .35rem; vertical-align: middle; }
+
+  .paths { margin-top: 2.6rem; }
+  .paths h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: .3rem; }
+  .paths .plede { color: var(--muted); font-size: .92rem; margin-bottom: .8rem; }
+  .path { display: flex; gap: .55rem; align-items: center; padding: .75rem 0; border-bottom: .5px solid var(--hairline); flex-wrap: wrap; }
+  .path:last-child { border-bottom: none; }
+  .path b { min-width: 15.5rem; font-size: .9rem; }
+  .path .pstep { background: var(--indigo-50); color: var(--indigo-deep); border-radius: 999px; padding: .16rem .68rem; font-weight: 700; font-size: .8rem; text-decoration: none; transition: all .12s ease; }
+  .path .pstep:hover { background: var(--indigo); color: #fff; }
+  .path .parr { color: var(--muted); font-weight: 700; }
+
+  .transfer { margin-top: 2.6rem; }
+  .transfer h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: .3rem; }
+  .transfer .plede { color: var(--muted); font-size: .92rem; margin-bottom: .9rem; }
+  .transfer-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 1rem; }
+  .transfer-col { border: 1px solid var(--hairline); border-radius: var(--radius); background: #fff; padding: 1rem 1.1rem 1rem; }
+  .transfer-col h3 { font-size: .78rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; margin-bottom: .6rem; padding-bottom: .5rem; border-bottom: 2px solid var(--indigo-soft); color: var(--indigo-deep); }
+  .transfer-col.keep h3 { border-bottom-color: var(--indigo); }
+  .transfer-col.learn h3 { border-bottom-color: var(--amber); color: var(--amber-ink-text); }
+  .transfer-col.unlearn h3 { border-bottom-color: var(--ink); color: var(--ink); }
+  .transfer-col ul { list-style: none; margin: 0; padding: 0; }
+  .transfer-col li { font-size: .86rem; color: var(--ink); padding: .35rem 0 .35rem 1rem; position: relative; line-height: 1.5; }
+  .transfer-col li::before { content: ""; position: absolute; left: 0; top: .85rem; width: .45rem; height: .45rem; border-radius: 999px; background: var(--indigo-mid); }
+  .transfer-col.learn li::before { background: var(--amber); }
+  .transfer-col.unlearn li::before { background: var(--ink); }
+
+  .mm-section { margin-top: 1.6rem; }
+  .mm-section h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: .2rem; }
+  .mm-section .mm-lede { color: var(--muted); font-size: .92rem; margin-bottom: .4rem; }
+  .mm-wrap { border: 1px solid var(--hairline); border-radius: var(--radius); background: linear-gradient(180deg,#fff,#FCEFF7); padding: .6rem; overflow-x: auto; }
+  .mm-svg { width: 100%; height: auto; display: block; max-width: 60rem; margin: 0 auto; min-width: 34rem; }
+  .mm-link { cursor: pointer; text-decoration: none; }
+  .mm-node rect { transition: opacity .15s ease, filter .15s ease; }
+  .mm-node text { pointer-events: none; }
+  .mm-link:hover .mm-node rect { filter: brightness(1.06); }
+  .mm-edge { transition: opacity .15s ease; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn with Phoebe · Emerging Tech</div>
+    <h1>Learn <span class="accent">Physical AI &amp; Robotics</span> with Phoebe</h1>
+    <p class="sub">A warehouse row records something that already happened. When a model's output moves a physical arm, every grasp is a prediction and an experiment at once: the data depends on the policy that collected it, the label is a person driving the robot, the camera's position is part of every row, and the real test costs a person resetting the table each time, so you get tens of trials, not millions. Wrenfield Lab, a constructed team teaching a two-arm robot to pick and pack parcels, runs through every session: a policy that scores 100 percent in simulation and grasps 29 of 50 real parcels, then 49 of 50 once lighting and camera are randomized and 20 real demonstrations are mixed in, and 0 of 50 after the camera moves 2 cm without anyone recording it. Six leader sessions on the decision, ten practitioner sessions on the build. The research is cited; every Wrenfield number is constructed and computed in the page. Nothing here is investment advice or a view on any company.</p>
+    <div class="stats-row">
+      <div class="stat"><b data-count="16">16</b><span>sessions, two tracks</span></div>
+      <div class="stat"><b>29 to 49</b><span>real grasps of 50, up the ladder</span></div>
+      <div class="stat"><b>0</b><span>of 50 after a 2 cm camera bump</span></div>
+      <div class="stat"><b>18 vs 15</b><span>of 20: p = 0.41, not a ranking</span></div>
+      <div class="stat"><b data-count="45">45</b><span>min per session</span></div>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="section ihx-hero" aria-label="A hand-drawn sim-to-real ladder and the demonstration experiment">
+    <figure class="zoomable" style="margin:0 0 1rem">
+      <svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn ladder of real grasps out of 50 for the constructed Wrenfield policy, each rung a block against a simulator score. No randomization: 29 real, simulator 100 percent. Lighting randomized: 37. Plus camera pose: 46, with 4 misses all at the edge of the bench. A marigold top block, revealed by the button, adds 20 real demonstrations: 49 of 50, because the real lens magnifies by 8 percent and only real data carries it.">
+        <defs>
+          <filter id="wrnxSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="29" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnxHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnxAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnxH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnxL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnxS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnxV { font: 800 20px Inter, sans-serif; fill: #6B0546; }
+          .wrnxK { font: 800 20px Inter, sans-serif; fill: #2A1222; }
+          .wrnxN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+          .wrnx-top { transition: opacity .3s ease; opacity: 0; }
+          .wrnx-on .wrnx-top { opacity: 1; }
+          @media (prefers-reduced-motion: reduce) { .wrnx-top { transition: none; } }
+        </style>
+
+        <text class="wrnxH" x="30" y="30">REAL GRASPS OUT OF 50, ONE RUNG AT A TIME (CONSTRUCTED)</text>
+        <text class="wrnxH" x="590" y="30">WHERE THE 4 MISSES ARE AT RUNG 3</text>
+
+        <g filter="url(#wrnxSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="236" width="150" height="48" rx="6" transform="rotate(-0.6 105 260)" fill="#FFFFFF"/>
+          <rect x="150" y="180" width="150" height="48" rx="6" transform="rotate(0.5 225 204)" fill="#FCEFF7"/>
+          <rect x="270" y="124" width="150" height="48" rx="6" transform="rotate(-0.4 345 148)" fill="url(#wrnxHc)"/>
+          <path d="M180 252 L196 236 M300 196 L316 180 M420 140 L436 124" marker-end="url(#wrnxAr)"/>
+          <rect x="600" y="76" width="250" height="150" rx="10" transform="rotate(0.4 725 151)" fill="#FFFFFF"/>
+          <rect x="612" y="100" width="56" height="104" rx="4" fill="#FCEFF7"/>
+          <rect x="782" y="100" width="56" height="104" rx="4" fill="#FCEFF7"/>
+          <circle cx="634" cy="128" r="6" fill="#991B1B"/>
+          <circle cx="650" cy="170" r="6" fill="#991B1B"/>
+          <circle cx="800" cy="140" r="6" fill="#991B1B"/>
+          <circle cx="818" cy="186" r="6" fill="#991B1B"/>
+        </g>
+        <g class="wrnx-top" filter="url(#wrnxSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="390" y="68" width="150" height="48" rx="6" transform="rotate(0.6 465 92)" fill="#F4B63C"/>
+          <path d="M540 84 L556 68" marker-end="url(#wrnxAr)"/>
+        </g>
+
+        <text class="wrnxV" x="46" y="268">29</text>
+        <text class="wrnxS" x="84" y="258">no random-</text>
+        <text class="wrnxS" x="84" y="272">ization</text>
+        <text class="wrnxV" x="166" y="212">37</text>
+        <text class="wrnxS" x="204" y="202">+ lighting</text>
+        <text class="wrnxS" x="204" y="216">randomized</text>
+        <text class="wrnxV" x="286" y="156">46</text>
+        <text class="wrnxS" x="324" y="146">+ camera</text>
+        <text class="wrnxS" x="324" y="160">pose</text>
+        <g class="wrnx-top">
+          <text class="wrnxK" x="406" y="100">49</text>
+          <text class="wrnxL" x="444" y="90">+ 20 real</text>
+          <text class="wrnxL" x="444" y="104">demos</text>
+        </g>
+        <text class="wrnxS" x="30" y="306">The simulator scores 100, 98.6, 98.6 and 98.0 percent on every rung: it cannot see what is changing.</text>
+
+        <text class="wrnxL" x="640" y="94" text-anchor="middle">left edge</text>
+        <text class="wrnxL" x="810" y="94" text-anchor="middle">right edge</text>
+        <text class="wrnxS" x="725" y="158" text-anchor="middle">centre:</text>
+        <text class="wrnxS" x="725" y="174" text-anchor="middle">29 of 29</text>
+        <text class="wrnxN" x="600" y="252">Edge 17 of 21: the real lens</text>
+        <text class="wrnxN" x="600" y="270">magnifies by 8 percent.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the misses that survive every simulator setting cluster at the edges; the marigold rung is the only fix, real data that carries the real lens.</figcaption>
+    </figure>
+    <div class="ihx-row">
+      <button type="button" class="btn primary" id="wrnx-toggle">Mix in 20 real demonstrations</button>
+      <span class="ihx-hint" id="wrnx-hint">Canon numbers from the bench, seed 1122. Press it and watch the marigold rung.</span>
+    </div>
+    <div class="ihx-guess" id="wrnx-guess">
+      <p class="ihx-q"><b>Guess first.</b> After randomizing lighting and camera, the policy grasps 46 of 50 real parcels. Twenty real demonstrations are about 5 percent of its training episodes. How many of the 4 misses do you think they fix?</p>
+      <div class="ihx-slider">
+        <input type="range" id="wrnx-g" min="0" max="4" step="1" value="1" aria-label="your guess, misses fixed">
+        <output for="wrnx-g" id="wrnx-gv">1</output>
+        <button type="button" class="btn" id="wrnx-reveal">Lock my guess</button>
+      </div>
+      <p class="ihx-answer" id="wrnx-ans" hidden></p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="paths" style="margin-top:0">
+      <h2>Leader track 🧭 <span style="font-size:.85rem;font-weight:600;color:var(--muted)">· six sessions, no code</span></h2>
+      <p class="plede">For anyone who funds, governs or signs off robotics data work. The robot as a data loop, demonstrations as the dataset, what a success rate can tell you, how to read a robot demo, why the warehouse playbook breaks here, and a transfer map for anyone arriving from a data team.</p>
+    </div>
+    <div class="course-grid">
+      <a class="course-card" href="courses/a1-the-robot-is-a-data-loop.html" style="--diff:#34D399">
+        <span class="cicon">🔁</span>
+        <span class="cnum">Leader session 1 · start here</span>
+        <h3>The robot is a data loop</h3>
+        <p>Sense, decide, act, log, learn: five turns, five seats for the data team, and a simulator that is never the judge.</p>
+        <span class="meta"><span class="pill amber">▶ Start here</span></span>
+      </a>
+      <a class="course-card" href="courses/a2-demonstrations-are-the-dataset.html" style="--diff:#FBBF24">
+        <span class="cicon">🎮</span>
+        <span class="cnum">Leader session 2</span>
+        <h3>Demonstrations are the dataset</h3>
+        <p>The label is a person driving the arm. What a minute of demonstration costs, who collects it, and what gets thrown away.</p>
+      </a>
+      <a class="course-card" href="courses/a3-what-a-success-rate-can-and-cannot-tell-you.html" style="--diff:#FBBF24">
+        <span class="cicon">📏</span>
+        <span class="cnum">Leader session 3</span>
+        <h3>What a success rate can and cannot tell you</h3>
+        <p>18 of 20 against 15 of 20 is p = 0.41. Trial counts, intervals and the definition of success.</p>
+      </a>
+      <a class="course-card" href="courses/a4-reading-a-robot-demo-claim.html" style="--diff:#FB923C">
+        <span class="cicon">🎬</span>
+        <span class="cnum">Leader session 4</span>
+        <h3>Reading a robot demo claim</h3>
+        <p>Sped-up playback, cuts, hidden teleoperation and the best take of many: what a video can and cannot show.</p>
+      </a>
+      <a class="course-card" href="courses/a5-why-the-warehouse-playbook-breaks-here.html" style="--diff:#FB923C">
+        <span class="cicon">🧩</span>
+        <span class="cnum">Leader session 5</span>
+        <h3>Why the warehouse playbook breaks here</h3>
+        <p>The source, the identity, the ground truth, the feedback loop and the cost of being wrong, each drawn as a mechanism.</p>
+      </a>
+      <a class="course-card" href="courses/a6-from-warehouse-to-physical-ai.html" style="--diff:#FB923C">
+        <span class="cicon">🗺️</span>
+        <span class="cnum">Leader session 6</span>
+        <h3>From warehouse to physical AI: the transfer map</h3>
+        <p>What carries over, what must be learned, what must be unlearned, and a 90-day self-study ladder on free sources.</p>
+      </a>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="paths" style="margin-top:0">
+      <h2>Practitioner track 🛠️ <span style="font-size:.85rem;font-weight:600;color:var(--muted)">· ten sessions, hands on</span></h2>
+      <p class="plede">For whoever has to build on robot data and defend its numbers. Episodes, frames and calibration, teleoperation quality, cross-robot data, action representations, domain randomization, small-trial evaluation, intervention and stop logs, and a bench with an anti-lever and a break button.</p>
+    </div>
+    <div class="course-grid">
+      <a class="course-card" href="courses/p1-anatomy-of-an-episode.html" style="--diff:#34D399">
+        <span class="cicon">🎞️</span>
+        <span class="cnum">Practitioner session 1 · start here</span>
+        <h3>Anatomy of an episode</h3>
+        <p>Lanes on one clock, the action as the label, the identity bundle, and five checks before training.</p>
+        <span class="meta"><span class="pill amber">▶ Start here</span></span>
+      </a>
+      <a class="course-card" href="courses/p2-coordinate-frames-and-calibration.html" style="--diff:#34D399">
+        <span class="cicon">📐</span>
+        <span class="cnum">Practitioner session 2</span>
+        <h3>Coordinate frames and calibration</h3>
+        <p>Base, camera, gripper and parcel frames, the transform between them, and what a silent camera move does.</p>
+      </a>
+      <a class="course-card" href="courses/p3-teleop-data-quality.html" style="--diff:#FBBF24">
+        <span class="cicon">🕹️</span>
+        <span class="cnum">Practitioner session 3</span>
+        <h3>Teleop data quality</h3>
+        <p>Operator variance, failed takes, resets and pauses: filtering demonstrations without filtering out the hard cases.</p>
+      </a>
+      <a class="course-card" href="courses/p4-mixing-data-across-robots.html" style="--diff:#FBBF24">
+        <span class="cicon">🤝</span>
+        <span class="cnum">Practitioner session 4</span>
+        <h3>Mixing data across robots</h3>
+        <p>Pooling 60 datasets from 22 robot types helped the small and hurt the large. Embodiment, alignment, normalisation.</p>
+      </a>
+      <a class="course-card" href="courses/p5-actions-as-data.html" style="--diff:#FBBF24">
+        <span class="cicon">🎚️</span>
+        <span class="cnum">Practitioner session 5</span>
+        <h3>Actions as data</h3>
+        <p>Absolute or delta, joint or gripper space, normalisation, and chunks: success went from 1 to 44 percent with longer chunks.</p>
+      </a>
+      <a class="course-card" href="courses/p6-domain-randomization.html" style="--diff:#FB923C">
+        <span class="cicon">🎲</span>
+        <span class="cnum">Practitioner session 6</span>
+        <h3>Domain randomization</h3>
+        <p>Vary the simulator until the real world is one more variation, and know when you have varied it too far.</p>
+      </a>
+      <a class="course-card" href="courses/p7-evaluating-a-policy-in-20-trials.html" style="--diff:#FB923C">
+        <span class="cicon">⚖️</span>
+        <span class="cnum">Practitioner session 7</span>
+        <h3>Evaluating a policy in 20 trials</h3>
+        <p>Wilson intervals, matched initial conditions, Fisher's exact test, and why 18 of 20 may not beat 15 of 20.</p>
+      </a>
+      <a class="course-card" href="courses/p8-the-intervention-log-as-labels.html" style="--diff:#FB923C">
+        <span class="cicon">✋</span>
+        <span class="cnum">Practitioner session 8</span>
+        <h3>The intervention log as labels</h3>
+        <p>When a person takes over mid-rollout, the takeover is a label. What it teaches, and what it hides.</p>
+      </a>
+      <a class="course-card" href="courses/p9-shared-space-and-stop-logs.html" style="--diff:#FB923C">
+        <span class="cicon">🛑</span>
+        <span class="cnum">Practitioner session 9</span>
+        <h3>Shared space and stop logs</h3>
+        <p>Force limits, protective stops as data, rates with the right denominator, and the cost of being wrong near people.</p>
+      </a>
+      <a class="course-card" href="courses/p10-the-sim-to-real-bench.html" style="--diff:#F87171">
+        <span class="cicon">🎛️</span>
+        <span class="cnum">Practitioner session 10 · capstone</span>
+        <h3>The sim-to-real bench</h3>
+        <p>Every rung live: 29, 37, 46, 49 of 50. Over-randomize for 19; bump the camera for 0.</p>
+      </a>
+    </div>
+    <div class="diff-legend">
+      <span><i style="background:#34D399"></i>Foundations</span>
+      <span><i style="background:#FBBF24"></i>Working depth</span>
+      <span><i style="background:#FB923C"></i>Advanced</span>
+      <span><i style="background:#F87171"></i>Hardest</span>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="paths">
+      <h2>Four ways through</h2>
+      <p class="plede">Everyone starts at session 1 of their track. These are the shortest useful routes if you cannot take all sixteen.</p>
+      <div class="path"><b>I sign off robotics investments in my team</b>
+        <a class="pstep" href="courses/a1-the-robot-is-a-data-loop.html">The loop</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a3-what-a-success-rate-can-and-cannot-tell-you.html">Success rates</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a4-reading-a-robot-demo-claim.html">Reading a demo</a>
+      </div>
+      <div class="path"><b>I build the data platform</b>
+        <a class="pstep" href="courses/p1-anatomy-of-an-episode.html">Episodes</a><span class="parr">→</span>
+        <a class="pstep" href="courses/p2-coordinate-frames-and-calibration.html">Calibration</a><span class="parr">→</span>
+        <a class="pstep" href="courses/p3-teleop-data-quality.html">Teleop quality</a><span class="parr">→</span>
+        <a class="pstep" href="courses/p4-mixing-data-across-robots.html">Mixing robots</a>
+      </div>
+      <div class="path"><b>I train and evaluate policies</b>
+        <a class="pstep" href="courses/p5-actions-as-data.html">Actions</a><span class="parr">→</span>
+        <a class="pstep" href="courses/p6-domain-randomization.html">Randomization</a><span class="parr">→</span>
+        <a class="pstep" href="courses/p7-evaluating-a-policy-in-20-trials.html">20 trials</a><span class="parr">→</span>
+        <a class="pstep" href="courses/p10-the-sim-to-real-bench.html">The bench</a>
+      </div>
+      <div class="path"><b>I am moving in from a data team</b>
+        <a class="pstep" href="courses/a5-why-the-warehouse-playbook-breaks-here.html">Why it breaks</a><span class="parr">→</span>
+        <a class="pstep" href="courses/a6-from-warehouse-to-physical-ai.html">The transfer map</a><span class="parr">→</span>
+        <a class="pstep" href="courses/p1-anatomy-of-an-episode.html">Episodes</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="transfer">
+      <h2>If you come from a data team</h2>
+      <p class="plede">Leader session 6 in three columns. What a conventional analyst, engineer or scientist already has that is worth more here, what is new, and what is actively dangerous.</p>
+      <div class="transfer-grid">
+        <div class="transfer-col keep">
+          <h3>Carries over</h3>
+          <ul>
+            <li>Data contracts and quality checks, pointed at episodes: clock, cameras, action, identity, outcome</li>
+            <li>Slicing a metric by segment, now by lighting, position and initial condition</li>
+            <li>Confidence intervals and honest comparisons, on tens of trials instead of millions of rows</li>
+            <li>Lineage: which version of what produced this row, now which robot, calibration and policy</li>
+          </ul>
+        </div>
+        <div class="transfer-col learn">
+          <h3>Must learn</h3>
+          <ul>
+            <li>Episodes: observations and actions on one clock, and which column is the label</li>
+            <li>Coordinate frames and calibration: a camera's position is part of every row</li>
+            <li>Demonstrations and teleoperation: the label is a person driving the arm</li>
+            <li>Simulation and domain randomization, and checking it on the real robot</li>
+          </ul>
+        </div>
+        <div class="transfer-col unlearn">
+          <h3>Must unlearn</h3>
+          <ul>
+            <li>"The data records the world": a robot's data records what its policy did</li>
+            <li>"More rows fix it": some gaps, like a lens the simulator lacks, need real data</li>
+            <li>"98 percent is a result": without the trial count it is not; 18 of 20 against 15 of 20 is p = 0.41</li>
+            <li>"Config is not data": an unrecorded 2 cm camera move took 49 of 50 to 0</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section mm-section">
+    <h2>The whole thing on one page</h2>
+    <p class="mm-lede">Every idea and the session that owns it. Click any node to jump there.</p>
+    <div class="mm-wrap"><div id="mindmap"></div></div>
+  </section>
+
+  <section class="section">
+    <div class="paths">
+      <h2>What is real here</h2>
+      <p class="plede">Every number was computed before any page quoted it. The research is real and cited; the lab around it is constructed.</p>
+      <table style="width:100%;border-collapse:collapse">
+        <tr><td style="padding:.5rem 0;font-weight:700">The research</td><td style="padding:.5rem 0;color:var(--muted)">Published papers on domain randomization (2017), low-cost teleoperation and action chunking (2023), pooling data across 22 robot types (2023), a 76k-trajectory collection (2024) and policy evaluation practice (2024), cited by author and year on each page</td></tr>
+        <tr><td style="padding:.5rem 0;font-weight:700">The ladder</td><td style="padding:.5rem 0;color:var(--muted)">29, 37, 46 and 49 real grasps of 50 while the simulator reads 98 to 100 percent throughout</td></tr>
+        <tr><td style="padding:.5rem 0;font-weight:700">The anti-lever and the break</td><td style="padding:.5rem 0;color:var(--muted)">Over-randomizing drops the simulator to 47.9 percent and the real cell to 19 of 50. An unrecorded 2 cm camera move takes 49 of 50 to 0. Both modelled and declared on the widget</td></tr>
+        <tr><td style="padding:.5rem 0;font-weight:700">The engine checks itself</td><td style="padding:.5rem 0;color:var(--muted)">Five properties on every page load, each shown to fail when its fault is planted back. A Python copy reproduces every bench number with zero difference</td></tr>
+        <tr><td style="padding:.5rem 0;font-weight:700">Constructed</td><td style="padding:.5rem 0;color:var(--muted)">Wrenfield Lab, its robot, its cell and its trials are invented so the truth is knowable. No real company, product, robot or incident appears; nothing here is investment advice</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <footer class="pagefoot">
+    <span class="meta">part of <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a> · by Phoebe Fu · not investment advice · rare events over millions of miles live in <a href="https://phoebefu6.github.io/learn-autonomous-driving-with-phoebe/">learn autonomous driving ↗</a>, sensor clocks in <a href="https://phoebefu6.github.io/learn-iot-data-with-phoebe/">learn IoT data ↗</a></span>
+  </footer>
+
+</main>
+
+<script>
+window.MINDMAP_DATA = {
+ "title": "When the model\nmoves an arm",
+ "centerColor": "#6B0546",
+ "sessions": [
+  {
+   "label": "A data loop",
+   "href": "courses/a1-the-robot-is-a-data-loop.html",
+   "concepts": [
+    {
+     "label": "Anatomy of an episode",
+     "href": "courses/p1-anatomy-of-an-episode.html"
+    },
+    {
+     "label": "Frames and calibration",
+     "href": "courses/p2-coordinate-frames-and-calibration.html"
+    },
+    {
+     "label": "Sim is not the judge",
+     "href": "courses/a1-the-robot-is-a-data-loop.html"
+    }
+   ]
+  },
+  {
+   "label": "Demonstrations",
+   "href": "courses/a2-demonstrations-are-the-dataset.html",
+   "concepts": [
+    {
+     "label": "Teleop data quality",
+     "href": "courses/p3-teleop-data-quality.html"
+    },
+    {
+     "label": "Mixing robots",
+     "href": "courses/p4-mixing-data-across-robots.html"
+    },
+    {
+     "label": "Actions as data",
+     "href": "courses/p5-actions-as-data.html"
+    }
+   ]
+  },
+  {
+   "label": "Success rates",
+   "href": "courses/a3-what-a-success-rate-can-and-cannot-tell-you.html",
+   "concepts": [
+    {
+     "label": "Policy in 20 trials",
+     "href": "courses/p7-evaluating-a-policy-in-20-trials.html"
+    },
+    {
+     "label": "Wilson intervals",
+     "href": "courses/p7-evaluating-a-policy-in-20-trials.html"
+    },
+    {
+     "label": "Whose success rule",
+     "href": "courses/a3-what-a-success-rate-can-and-cannot-tell-you.html"
+    }
+   ]
+  },
+  {
+   "label": "Reading a demo",
+   "href": "courses/a4-reading-a-robot-demo-claim.html",
+   "concepts": [
+    {
+     "label": "Hidden teleoperation",
+     "href": "courses/a4-reading-a-robot-demo-claim.html"
+    },
+    {
+     "label": "Interventions as labels",
+     "href": "courses/p8-the-intervention-log-as-labels.html"
+    },
+    {
+     "label": "Best take of many",
+     "href": "courses/a4-reading-a-robot-demo-claim.html"
+    }
+   ]
+  },
+  {
+   "label": "Why it breaks",
+   "href": "courses/a5-why-the-warehouse-playbook-breaks-here.html",
+   "concepts": [
+    {
+     "label": "Stop logs",
+     "href": "courses/p9-shared-space-and-stop-logs.html"
+    },
+    {
+     "label": "Cost of being wrong",
+     "href": "courses/a5-why-the-warehouse-playbook-breaks-here.html"
+    },
+    {
+     "label": "Domain randomization",
+     "href": "courses/p6-domain-randomization.html"
+    }
+   ]
+  },
+  {
+   "label": "Transfer map",
+   "href": "courses/a6-from-warehouse-to-physical-ai.html",
+   "concepts": [
+    {
+     "label": "The 90-day ladder",
+     "href": "courses/a6-from-warehouse-to-physical-ai.html"
+    },
+    {
+     "label": "The sim-to-real bench",
+     "href": "courses/p10-the-sim-to-real-bench.html"
+    },
+    {
+     "label": "Unlearn: config is data",
+     "href": "courses/a6-from-warehouse-to-physical-ai.html"
+    }
+   ]
+  }
+ ]
+};
+</script>
+<script src="assets/mindmap.js?v=1"></script>
+<script>
+(function(){
+  var fig=document.querySelector('.ihx-hero svg'); if(!fig) return;
+  var on=false, tgl=document.getElementById('wrnx-toggle');
+  tgl.addEventListener('click', function(){
+    on=!on; fig.classList.toggle('wrnx-on', on);
+    tgl.textContent = on ? 'Take the real demonstrations out again' : 'Mix in 20 real demonstrations';
+  });
+  var g=document.getElementById('wrnx-g'), gv=document.getElementById('wrnx-gv'), rv=document.getElementById('wrnx-reveal'), ans=document.getElementById('wrnx-ans');
+  g.addEventListener('input', function(){ gv.textContent = g.value; });
+  rv.addEventListener('click', function(){
+    var v=+g.value, line;
+    if (v < 3) line = 'Most people guess low: 20 episodes against 400 simulated ones feels like too few to matter. They carry the one thing the simulator lacks.';
+    else line = 'Right direction. Small real data can matter a lot when it carries what simulation cannot.';
+    ans.textContent = 'You said ' + v + '. The bench says 3 of the 4: 46 becomes 49 of 50, and the edge goes from 17 of 21 to 20 of 21. ' + line + ' Session 10 lets you rerun it with other seeds.';
+    ans.hidden=false; rv.disabled=true; g.disabled=true;
+    if (!on) tgl.click();
+  });
+})();
+</script>
+<script src="assets/app.js?v=1"></script>
+</body>
+</html>

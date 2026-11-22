@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Practitioner session 1 of 10. Anatomy of an episode: cameras, joint readings and commands on one clock, a success flag a person decided, and the metadata that is the episode's identity. Inspect five constructed Wrenfield episodes and write the checks in pandas.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Anatomy of an episode - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Practitioner session 1 of 10. The unit of robot data is a time-indexed bundle, not a row. What is in it, what identifies it, and five checks before you train on it.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/p1-anatomy-of-an-episode.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Anatomy of an episode - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="Observations, actions, a clock, a success flag and an identity. Five checks before an episode reaches training.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Practitioner session 1 · Anatomy of an episode - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Practitioner session 1 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Practitioner session 1 of 10</div>
+    <h1>Anatomy of an <span class="accent">episode</span></h1>
+    <p class="sub">The unit of robot learning data is the episode: one attempt at a task, recorded from every camera and every joint on one clock, with a success flag at the end that a person decided. Tonight you take one apart. What is in it, which part is the label, what identifies it, and the five checks a data team runs before an episode is allowed anywhere near training. Wrenfield Lab and all its episodes are constructed; the research numbers are real and cited.</p>
+    <div class="chip-row">
+      <span class="chip level">🟢 Foundations</span>
+      <span class="chip audience">Data engineers and analysts new to robot data</span>
+      <span class="chip audience">ML engineers who inherit a robot dataset</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:3">3-18 · Inside an episode</span>
+      <span class="a3" style="flex:3">18-28 · Identity and checks</span>
+      <span class="a4" style="flex:4">28-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Wrenfield's first export lands in the bucket</h2>
+    </div>
+    <p class="lede">Wrenfield Lab (constructed) has recorded its first week of parcel picks. The export is a folder per episode: image files from three cameras, a table of joint readings and commands at 50 rows a second, and a small metadata file. The analyst's instinct is to flatten it into one table and start counting. Tonight is about why that loses the two things that matter most, the clock and the identity, and what to check first.</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> A drawing of an episode as lanes on one clock: cameras, joint readings, commands, events and the outcome. Which column is the action, and why in one published teleoperation rig it is the person's arm, not the robot's. The metadata bundle that makes an episode comparable with another: robot, calibration, policy or operator, scene, success rule. Five checks that catch most broken episodes. And a pandas script that runs two of them on a constructed episode with a hole in its clock and a missing calibration id.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why "one row per event" fails here<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A warehouse fact table has one row per thing that happened. An episode has hundreds of rows per second of the same thing happening, from several sources that do not tick together, and the only row that resembles a business event is the last one: did it work? Flatten it and you either lose the time structure the policy learns from, or you repeat the success flag on every row and pretend a 500-row episode is 500 labelled examples.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>In the low-cost two-arm rig of Zhao, Kumar, Levine and Finn (2023), episodes took 8 to 14 seconds and were recorded at 50 Hz, so each was 400 to 700 time steps. Each observation was the follower arms' joint positions plus images from four cameras. Fifty such episodes, about 10 to 20 minutes of data, were enough to train some tasks to 80 to 90 percent success. The episode, not the row, was the unit they counted.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Words for tonight<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Timestep.</strong> One tick of the control clock. At 50 Hz, every 0.02 seconds.</li>
+          <li><strong>Observation.</strong> What the policy is given at a timestep: images, joint positions, sometimes gripper force.</li>
+          <li><strong>Action.</strong> What the policy outputs at a timestep: usually target joint positions or an end-effector motion (practitioner session 5).</li>
+          <li><strong>Outcome.</strong> The success flag and, ideally, the rule used to set it.</li>
+          <li><strong>Metadata.</strong> Everything that says which robot, calibration, policy or operator, and scene produced the episode. It is the episode's identity.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers observations, actions, the clock and the outcome</span>
+      <h2>An episode is lanes on one clock</h2>
+      <span class="tag concept">15 min live</span>
+    </div>
+    <p class="lede">Draw an episode the way the robot experienced it: time runs left to right, and each source is a lane. Cameras produce frames; encoders produce joint readings; the policy or the operator produces commands; the system logs events like "gripper closed". At the very end sits one judgement. Everything you train on is a slice of these lanes; everything you evaluate is the judgement.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn episode as five lanes over 10 seconds. Wrist camera frames and an exterior camera's frames as ticks; joint readings as a dense line at 50 Hz; commands, the action lane, highlighted in marigold, also at 50 Hz; events such as gripper closed at 6.2 seconds and parcel lifted at 7.0 seconds; and the outcome at the end, a single success flag with the rule used. A gap in the joint lane near 4 seconds marks 12 lost steps.">
+        <defs>
+          <filter id="wrnp1aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="13" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp1aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp1aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp1aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp1aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp1aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp1aA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp1aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp1aH" x="30" y="30">ONE CONSTRUCTED WRENFIELD EPISODE, 10 SECONDS, LEFT TO RIGHT</text>
+
+        <g filter="url(#wrnp1aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="180" y="48" width="560" height="34" rx="6" fill="#FFFFFF"/>
+          <rect x="180" y="92" width="560" height="34" rx="6" fill="#FFFFFF"/>
+          <rect x="180" y="136" width="560" height="34" rx="6" fill="url(#wrnp1aHc)"/>
+          <rect x="180" y="180" width="560" height="34" rx="6" fill="#F4B63C"/>
+          <rect x="180" y="224" width="560" height="34" rx="6" fill="#FCEFF7"/>
+          <rect x="752" y="224" width="100" height="34" rx="6" fill="#FCEFF7"/>
+          <path d="M200 58 L200 72 M240 58 L240 72 M280 58 L280 72 M320 58 L320 72 M360 58 L360 72 M400 58 L400 72 M440 58 L440 72 M480 58 L480 72 M520 58 L520 72 M560 58 L560 72 M600 58 L600 72 M640 58 L640 72 M680 58 L680 72 M720 58 L720 72"/>
+          <path d="M210 102 L210 116 M260 102 L260 116 M310 102 L310 116 M360 102 L360 116 M410 102 L410 116 M460 102 L460 116 M510 102 L510 116 M560 102 L560 116 M610 102 L610 116 M660 102 L660 116 M710 102 L710 116"/>
+          <path d="M408 132 L408 174 M424 132 L424 174" stroke="#991B1B" stroke-width="2.4"/>
+          <path d="M527 220 L527 262 M572 220 L572 262" stroke="#9B0865" stroke-width="2.4"/>
+          <!-- doodle: a gripper -->
+          <path d="M820 70 L820 56 M808 56 L832 56 M808 56 L808 76 M832 56 L832 76" stroke="#B5338B" stroke-width="2.5"/>
+        </g>
+
+        <text class="wrnp1aL" x="168" y="70" text-anchor="end">Wrist camera</text>
+        <text class="wrnp1aL" x="168" y="114" text-anchor="end">Exterior camera</text>
+        <text class="wrnp1aL" x="168" y="158" text-anchor="end">Joint readings</text>
+        <text class="wrnp1aL" x="168" y="202" text-anchor="end">Commands (actions)</text>
+        <text class="wrnp1aL" x="168" y="246" text-anchor="end">Events</text>
+        <text class="wrnp1aS" x="168" y="134" text-anchor="end">observations</text>
+
+        <text class="wrnp1aS" x="430" y="160">12 lost steps</text>
+        <text class="wrnp1aS" x="534" y="246">grip</text>
+        <text class="wrnp1aS" x="578" y="246">lift</text>
+        <text class="wrnp1aL" x="764" y="246">success</text>
+
+        <text class="wrnp1aA" x="180" y="284">0 s</text>
+        <text class="wrnp1aA" x="740" y="284" text-anchor="end">10 s · 500 steps at 50 Hz</text>
+
+        <text class="wrnp1aN" x="30" y="318">Observations are what the policy gets; the marigold lane is what it must learn to produce; the outcome is</text>
+        <text class="wrnp1aN" x="30" y="336">one flag for the whole episode, set by a rule a person wrote. The red marks show a hole in the clock.</text>
+        <text class="wrnp1aN" x="30" y="362">Constructed episode. The 50 Hz rate and the leader-arm actions follow Zhao et al. (2023).</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold lane is the label for imitation learning; the single flag at the end is the label for evaluation.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Which column is the action?<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>In imitation learning the action is the label: the model learns to output it from the observations. Getting the column right is not obvious. In the two-arm rig of Zhao et al. (2023), a person moves small "leader" arms and the robot's "follower" arms track them. The recorded action is the leader's joint positions, not the follower's. The authors explain why: the force the robot applies is implicit in the difference between the two, through the low-level controller. Record the follower's positions as the action and you have thrown that away.</p>
+        <p>The general rule for a data team: the action column must be the command that was sent, at the time it was sent, in the units the controller accepted. Practitioner session 5 covers the choices (absolute or delta, joint or end-effector) and why each needs its own normalisation.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The outcome is a judgement, so record the rule<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Someone decided whether each episode succeeded. In DROID (Khazatsky et al. 2024), a large collection of 76k demonstration trajectories gathered by 50 collectors over 12 months, collectors marked each episode as success or failure, failed episodes were excluded from policy training batches, and about 16k unsuccessful trajectories were released separately. The flag decided what the model was allowed to learn from.</p>
+        <p>So the flag needs its rule next to it: "parcel in tote, tote upright" is a different dataset from "parcel lifted". When the rule changes mid-collection, every episode after the change has a different label. Leader session 3 and practitioner session 7 come back to this.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Clocks: what we own and what we link<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Sensors sampling at different rates, timestamps that mean "captured" or "received", and joining streams with a tolerance are general time-series problems. They are taught in depth in <a href="https://phoebefu6.github.io/learn-iot-data-with-phoebe/">learn IoT data</a>. What is particular to robots is that the commands are in the same episode as the readings, so a lost or shifted step does not just blur a chart: it pairs an observation with the wrong action, and the policy learns the mismatch.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers metadata as the episode's identity</span>
+      <h2>An episode's identity is a bundle, not a key</h2>
+      <span class="tag concept">8 min live</span>
+    </div>
+    <p class="lede">Two episodes are comparable only if you know what produced each one. An episode id is a name; the identity is the bundle behind it. Change any part of the bundle and the same pixels mean something different: a new calibration moves every coordinate, a new policy changes which situations get visited, a new operator changes the style of every demonstration.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn identity bundle. An episode id in the centre, linked to six fields: robot and gripper; calibration id, highlighted in marigold; policy version or operator; scene and lighting; task and success rule; time and software versions. Each field has a note on what silently changes if it is missing.">
+        <defs>
+          <filter id="wrnp1bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="17" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp1bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp1bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp1bH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp1bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp1bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp1bK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp1bW { font: 800 13px Inter, sans-serif; fill: #FFFFFF; }
+          .wrnp1bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <g filter="url(#wrnp1bSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="360" y="118" width="160" height="50" rx="12" fill="#9B0865"/>
+          <rect x="30" y="30" width="250" height="62" rx="8" transform="rotate(-0.6 155 61)" fill="#FFFFFF"/>
+          <rect x="30" y="112" width="250" height="62" rx="8" transform="rotate(0.5 155 143)" fill="#F4B63C"/>
+          <rect x="30" y="194" width="250" height="62" rx="8" transform="rotate(-0.4 155 225)" fill="#FFFFFF"/>
+          <rect x="600" y="30" width="250" height="62" rx="8" transform="rotate(0.5 725 61)" fill="#FFFFFF"/>
+          <rect x="600" y="112" width="250" height="62" rx="8" transform="rotate(-0.5 725 143)" fill="#FFFFFF"/>
+          <rect x="600" y="194" width="250" height="62" rx="8" transform="rotate(0.4 725 225)" fill="#FFFFFF"/>
+          <path d="M358 132 L284 66 M358 143 L284 143 M358 156 L284 222 M522 132 L596 66 M522 143 L596 143 M522 156 L596 222"/>
+        </g>
+
+        <text class="wrnp1bW" x="440" y="148" text-anchor="middle">episode wf-000412</text>
+
+        <text class="wrnp1bL" x="46" y="56">Robot and gripper</text>
+        <text class="wrnp1bS" x="46" y="76">a new gripper changes every grasp</text>
+        <text class="wrnp1bL" x="46" y="138">Calibration id</text>
+        <text class="wrnp1bK" x="46" y="158">missing: no way to undo a camera move</text>
+        <text class="wrnp1bL" x="46" y="220">Policy version or operator</text>
+        <text class="wrnp1bS" x="46" y="240">decides which situations were visited</text>
+        <text class="wrnp1bL" x="616" y="56">Scene and lighting</text>
+        <text class="wrnp1bS" x="616" y="76">the condition column of every scorecard</text>
+        <text class="wrnp1bL" x="616" y="138">Task and success rule</text>
+        <text class="wrnp1bS" x="616" y="158">the label's definition, versioned</text>
+        <text class="wrnp1bL" x="616" y="220">Time and software versions</text>
+        <text class="wrnp1bS" x="616" y="240">which controller, which logger</text>
+
+        <text class="wrnp1bN" x="30" y="290">Six fields. Lose any one and two episodes that look alike may not be comparable. Constructed Wrenfield example.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold field is the one most often missing and the most expensive to lose: without it, a camera move cannot be undone.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What the large collections had to standardise<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>When the Open X-Embodiment collaboration (2023) pooled 60 datasets from 22 robot types and 21 institutions, it had to decide how to treat identity it could not reconcile. It chose one canonical camera view per dataset and normalised each dataset's actions, and its authors state plainly that camera observations "still vary substantially" across datasets and that they did "not align the coordinate frames". DROID (2024) took the opposite route: the same hardware setup replicated 18 times, with calibration recorded and later re-estimated automatically with quality metrics. Practitioner session 4 compares the two choices.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>A naming habit that pays off<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Keep the identity fields in the episode's own metadata, not in a folder name or a spreadsheet next to it. Folder names get renamed; spreadsheets drift. A loader that refuses an episode with a missing calibration id is cheaper than a month of training on data whose camera moved.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers five checks before training</span>
+      <h2>Five checks that catch most broken episodes</h2>
+      <span class="tag concept">7 min live</span>
+    </div>
+    <p class="lede">Before an episode is used, five cheap checks: the clock has no holes, every camera is present and saw the robot, the action column is the command sent, the identity bundle is complete, and the outcome has a rule. The inspector below runs them on five constructed Wrenfield episodes. Each fails in a different way.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn checklist of five gates an episode passes through in order: clock without holes; every camera present and seeing the robot; action is the command sent; identity complete, highlighted in marigold; outcome with a rule. An episode that fails any gate goes to a quarantine folder, not to training.">
+        <defs>
+          <filter id="wrnp1cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="19" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp1cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp1cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp1cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp1cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp1cK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp1cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <g filter="url(#wrnp1cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="40" width="148" height="70" rx="8" transform="rotate(-0.6 104 75)" fill="#FFFFFF"/>
+          <rect x="200" y="40" width="148" height="70" rx="8" transform="rotate(0.5 274 75)" fill="#FFFFFF"/>
+          <rect x="370" y="40" width="148" height="70" rx="8" transform="rotate(-0.4 444 75)" fill="#FFFFFF"/>
+          <rect x="540" y="40" width="148" height="70" rx="8" transform="rotate(0.6 614 75)" fill="#F4B63C"/>
+          <rect x="710" y="40" width="148" height="70" rx="8" transform="rotate(-0.5 784 75)" fill="#FFFFFF"/>
+          <path d="M180 75 L196 75 M350 75 L366 75 M520 75 L536 75 M690 75 L706 75" marker-end="url(#wrnp1cAr)"/>
+          <path d="M104 112 L104 150 M274 112 L274 150 M444 112 L444 150 M614 112 L614 150 M784 112 L784 150" stroke-dasharray="4 4"/>
+          <rect x="30" y="152" width="828" height="34" rx="8" fill="url(#wrnp1cHc)"/>
+        </g>
+
+        <text class="wrnp1cL" x="44" y="66">1 Clock</text>
+        <text class="wrnp1cS" x="44" y="86">no gaps over 1.5 ticks</text>
+        <text class="wrnp1cL" x="214" y="66">2 Cameras</text>
+        <text class="wrnp1cS" x="214" y="86">all present, robot seen</text>
+        <text class="wrnp1cL" x="384" y="66">3 Action</text>
+        <text class="wrnp1cS" x="384" y="86">the command that was sent</text>
+        <text class="wrnp1cL" x="554" y="66">4 Identity</text>
+        <text class="wrnp1cK" x="554" y="86">six fields present</text>
+        <text class="wrnp1cL" x="724" y="66">5 Outcome</text>
+        <text class="wrnp1cS" x="724" y="86">flag plus its rule</text>
+        <text class="wrnp1cL" x="444" y="174" text-anchor="middle">Any failure: quarantine, with the reason. Never silently dropped, never silently trained on.</text>
+
+        <text class="wrnp1cN" x="30" y="224">Quarantine keeps the evidence. A dropped episode is a bias you cannot see later.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the gates run in order because the cheap ones come first; the marigold one is the one teams skip.</figcaption>
+    </figure>
+
+    <div class="wk" id="wrnp1-inspect">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">Five constructed Wrenfield episodes, written for this page. Pick one; the inspector runs the five checks on its summary and names what failed.</span>
+      </div>
+      <div class="wk-body">
+        <label class="sql-label" for="wrnp1-pick">Episode</label>
+        <select class="sql-code" id="wrnp1-pick"></select>
+        <div id="wrnp1-out"></div>
+        <p class="sql-note" id="wrnp1-verdict">...</p>
+      </div>
+      <div class="wk-foot">Constructed examples. Thresholds (a gap over 1.5 control periods, three cameras, six identity fields) are Wrenfield's house rules, not a standard.</div>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why "teleoperator in camera view" is a check<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>DROID's collection protocol was written to prevent mistakes such as "camera cannot see robot" and "teleoperator in camera view". The second one matters because a policy can learn to rely on whatever is in the picture. If a person's hand appears near the parcel in many successful demonstrations, the model may treat the hand as part of the scene it expects. Check 2 is not only "is the file there"; it is "does the frame show what the policy will see when nobody is helping".</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ BUILD-ALONG ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Checks 1 and 4 in pandas, on a constructed episode</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Python 3.10 or later with numpy and pandas. You build one constructed Wrenfield episode with a deliberate 12-step hole in its clock and a missing calibration id, then write the two checks that find them. The figure shows the gap check: the difference between consecutive timestamps should be one period, 0.02 seconds.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn timeline of timestamps at 0.02 second spacing, with one jump from 3.98 seconds to 4.24 seconds, a gap of 0.26 seconds, highlighted in marigold. A threshold line at 1.5 periods, 0.03 seconds, catches it.">
+        <defs>
+          <filter id="wrnp1dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="29" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp1dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp1dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp1dL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp1dS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp1dV { font: 800 16px Inter, sans-serif; fill: #6B0546; }
+          .wrnp1dN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <g filter="url(#wrnp1dSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M40 110 L304 110 M536 110 L840 110"/>
+          <path d="M60 100 L60 120 M100 100 L100 120 M140 100 L140 120 M180 100 L180 120 M220 100 L220 120 M260 100 L260 120 M300 100 L300 120"/>
+          <rect x="304" y="92" width="232" height="36" rx="6" fill="#F4B63C"/>
+          <path d="M540 100 L540 120 M580 100 L580 120 M620 100 L620 120 M660 100 L660 120 M700 100 L700 120 M740 100 L740 120 M780 100 L780 120 M820 100 L820 120"/>
+        </g>
+
+        <text class="wrnp1dS" x="60" y="146" text-anchor="middle">3.86</text>
+        <text class="wrnp1dS" x="300" y="146" text-anchor="middle">3.98</text>
+        <text class="wrnp1dS" x="540" y="146" text-anchor="middle">4.24</text>
+        <text class="wrnp1dS" x="820" y="146" text-anchor="middle">4.38</text>
+        <text class="wrnp1dV" x="420" y="80" text-anchor="middle">gap 0.26 s</text>
+        <text class="wrnp1dL" x="420" y="116" text-anchor="middle">12 steps missing</text>
+        <text class="wrnp1dS" x="160" y="80" text-anchor="middle">every gap 0.02 s</text>
+        <text class="wrnp1dS" x="680" y="80" text-anchor="middle">every gap 0.02 s</text>
+
+        <text class="wrnp1dN" x="30" y="184">Flag any gap over 1.5 periods (0.03 s at 50 Hz). Constructed episode; seed 7 in the script below.</text>
+        <text class="wrnp1dN" x="30" y="204">A lost step pairs an observation with the wrong action, so the check runs before training, not after.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - one marigold gap is twelve observation-action pairs the policy would otherwise learn from the wrong neighbours.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Build the constructed episode</h4>
+        <p>Ten seconds at 50 Hz is 500 steps. Delete steps 200 to 211 to simulate a logging hiccup, and leave the calibration id empty in the metadata.</p>
+        <div class="prompt-box good"><span class="label">ep.py, part 1</span>import numpy as np
+import pandas as pd
+
+rng = np.random.default_rng(7)          # constructed Wrenfield episode
+hz, seconds = 50, 10
+t = np.arange(hz * seconds) / hz         # 500 timesteps, 0.02 s apart
+t = np.delete(t, np.arange(200, 212))    # 12 steps lost in logging
+steps = pd.DataFrame({
+    "t": t,
+    "joint_0": np.cumsum(rng.normal(0, 0.01, len(t))),
+    "target_0": np.cumsum(rng.normal(0, 0.01, len(t))),
+    "cam_wrist_frame": np.arange(len(t)),
+})
+meta = {"episode_id": "wf-000412", "robot_id": "wf-arm-2",
+        "calibration_id": None, "policy": "teleop:op-07",
+        "success": True, "success_rule": "parcel in tote, tote upright"}</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Check 1: the clock has no holes</h4>
+        <p>Difference consecutive timestamps, round away floating-point noise, and count gaps over 1.5 periods.</p>
+        <div class="prompt-box good"><span class="label">ep.py, part 2</span>gaps = steps["t"].diff().round(3)
+print("steps:", len(steps))
+print("largest gap (s):", gaps.max())
+print("gaps over 1.5 periods:", int((gaps &gt; 1.5 / hz).sum()))</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Check 4: the identity is complete</h4>
+        <p>List every metadata field that is empty. In a real loader this list decides quarantine.</p>
+        <div class="prompt-box good"><span class="label">ep.py, part 3</span>missing = [k for k, v in meta.items() if v is None]
+print("missing metadata:", missing)</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Run it and read the output</h4>
+        <p>Run <code>python3 ep.py</code> from a scratch folder. The output below is what the script printed when this page was written; the joint values are random but the four lines do not depend on them.</p>
+        <div class="prompt-box good"><span class="label">Expected output</span>steps: 488
+largest gap (s): 0.26
+gaps over 1.5 periods: 1
+missing metadata: ['calibration_id']</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Extend it: check 5</h4>
+        <p>Add a line that fails the episode if <code>success</code> is set but <code>success_rule</code> is empty. Then set the rule to <code>None</code> and confirm your check fires.</p>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> Checks run before training and send failures to quarantine with a reason. The 488 is a warning in itself: an episode that should have 500 steps and has 488 has told you something before you looked at a single image.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">In the teleoperation rig of Zhao et al. (2023), which joint positions were recorded as the action, and why?</p>
+      <button class="qopt" type="button">A · The follower arms', because that is where the robot actually was</button>
+      <button class="qopt" type="button">B · The leader arms' (the ones the person moved), because the applied force is implicit in the difference between leader and follower</button>
+      <button class="qopt" type="button">C · Neither; only images were recorded</button>
+      <p class="qwhy">The follower's positions are an observation. The action is the command, and in that rig the command is the leader's position; recording the follower's would lose the force information.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">A constructed Wrenfield episode at 50 Hz has 488 steps over 10 seconds and one gap of 0.26 seconds. What is the right action?</p>
+      <button class="qopt" type="button">A · Quarantine it with the reason, because 12 observation-action pairs are missing and the neighbours across the gap are not consecutive</button>
+      <button class="qopt" type="button">B · Train on it; 12 steps out of 500 is noise</button>
+      <button class="qopt" type="button">C · Interpolate the actions across the gap and train</button>
+      <p class="qwhy">Interpolating invents commands nobody sent. Training on it pairs observations with the wrong next action. Quarantine keeps the evidence and the decision visible.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">Why does DROID's protocol treat "teleoperator in camera view" as a mistake?</p>
+      <button class="qopt" type="button">A · For privacy only</button>
+      <button class="qopt" type="button">B · Because it makes files larger</button>
+      <button class="qopt" type="button">C · Because the policy may learn to rely on what is in the frame, including a helping hand that will not be there when it runs alone</button>
+      <p class="qwhy">The training frames should show what the policy will see at run time. A person in view during demonstrations is a feature that disappears at deployment.</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">Before session 2</span>
+      <h2>Homework</h2>
+    </div>
+    <ol>
+      <li>Add checks 2, 3 and 5 to <code>ep.py</code> as functions that return a reason string or nothing.</li>
+      <li>Write the six identity fields for an episode in a dataset you know (any domain). Which one does your team not record?</li>
+      <li>Pick one success rule and rewrite it until two people would judge the same episode the same way.</li>
+      <li>Find a public robot dataset's documentation and note which identity fields it ships per episode. Practitioner session 2 starts from calibration.</li>
+    </ol>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Episode structure</span><span class="note">Zhao, Kumar, Levine and Finn (2023), arXiv 2304.13705: 50 Hz, 400 to 700 steps, 4 cameras, leader joint positions as actions. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Success flags and failed episodes</span><span class="note">Khazatsky et al. (2024), DROID, arXiv 2403.12945: 76k trajectories, 50 collectors, about 16k unsuccessful released separately. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Identity across datasets</span><span class="note">Open X-Embodiment Collaboration (2023), arXiv 2310.08864: frames not aligned, camera views vary. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Five checks and quarantine</span><span class="note">Constructed Wrenfield house rules; the build-along output was run and copied.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Coordinate frames and calibration</span><span class="note">Named tonight. Practitioner session 2.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Action representations</span><span class="note">Named tonight. Practitioner session 5.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Multi-rate clocks and resampling</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-iot-data-with-phoebe/">learn IoT data</a>.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>The unit.</strong> An episode: lanes on one clock plus one outcome.</div>
+      <div class="cheat-item"><strong>The label for learning.</strong> The action lane: the command sent, when it was sent.</div>
+      <div class="cheat-item"><strong>The label for evaluation.</strong> The success flag, with its rule, versioned.</div>
+      <div class="cheat-item"><strong>The identity.</strong> Robot, calibration, policy or operator, scene, task rule, software.</div>
+      <div class="cheat-item"><strong>Five checks.</strong> Clock, cameras, action, identity, outcome.</div>
+      <div class="cheat-item"><strong>Quarantine.</strong> Failures keep their reason; nothing is silently dropped.</div>
+      <div class="cheat-item"><strong>The count.</strong> 50 Hz for 10 seconds is 500 steps; 488 is a finding.</div>
+      <div class="cheat-item"><strong>The frame.</strong> Train on what the robot will see alone: no helping hands in view.</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>Coordinate frames and calibration.</strong> Where the camera really is, and what one silent move does to every episode after it.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Practitioner session 1 of 10 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="../index.html">← All sessions</a>
+        <a href="p2-coordinate-frames-and-calibration.html">Next: Coordinate frames and calibration →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  var EPS = [
+    { id: "wf-000412", note: "a logging hiccup", steps: 488, expected: 500, maxGap: 0.26, cams: ["wrist", "left", "right"], robotSeen: true, operatorInView: false, actionSource: "leader", identity: { robot: "wf-arm-2", calibration: null, policy: "teleop:op-07", scene: "bench-A, dim", rule: "v2", software: "logger 1.4" }, success: true },
+    { id: "wf-000413", note: "clean", steps: 500, expected: 500, maxGap: 0.02, cams: ["wrist", "left", "right"], robotSeen: true, operatorInView: false, actionSource: "leader", identity: { robot: "wf-arm-2", calibration: "cal-1118", policy: "teleop:op-07", scene: "bench-A, dim", rule: "v2", software: "logger 1.4" }, success: true },
+    { id: "wf-000414", note: "a camera knocked", steps: 500, expected: 500, maxGap: 0.02, cams: ["wrist", "left"], robotSeen: false, operatorInView: false, actionSource: "leader", identity: { robot: "wf-arm-2", calibration: "cal-1118", policy: "teleop:op-07", scene: "bench-A, normal", rule: "v2", software: "logger 1.4" }, success: false },
+    { id: "wf-000415", note: "the wrong arm logged", steps: 500, expected: 500, maxGap: 0.02, cams: ["wrist", "left", "right"], robotSeen: true, operatorInView: true, actionSource: "follower", identity: { robot: "wf-arm-2", calibration: "cal-1118", policy: "teleop:op-03", scene: "bench-B, normal", rule: "v2", software: "logger 1.5" }, success: true },
+    { id: "wf-000416", note: "a flag with no rule", steps: 500, expected: 500, maxGap: 0.02, cams: ["wrist", "left", "right"], robotSeen: true, operatorInView: false, actionSource: "leader", identity: { robot: "wf-arm-2", calibration: "cal-1118", policy: "policy-0.3", scene: "bench-A, normal", rule: null, software: "logger 1.5" }, success: true }
+  ];
+  var sel = document.getElementById("wrnp1-pick");
+  var out = document.getElementById("wrnp1-out");
+  var verdict = document.getElementById("wrnp1-verdict");
+  if (!sel || !out) return;
+  EPS.forEach(function (e, i) {
+    var o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = e.id + " · " + e.note;
+    sel.appendChild(o);
+  });
+  function checks(e) {
+    var missing = Object.keys(e.identity).filter(function (k) { return e.identity[k] === null; });
+    return [
+      { name: "1 Clock", ok: e.maxGap <= 1.5 / 50 && e.steps === e.expected, why: e.steps + " of " + e.expected + " steps; largest gap " + e.maxGap + " s" },
+      { name: "2 Cameras", ok: e.cams.length === 3 && e.robotSeen && !e.operatorInView, why: e.cams.length + " of 3 cameras; robot " + (e.robotSeen ? "seen" : "not seen") + (e.operatorInView ? "; operator in view" : "") },
+      { name: "3 Action", ok: e.actionSource === "leader" || e.identity.policy.indexOf("policy") === 0, why: "action column from the " + e.actionSource + " arm" },
+      { name: "4 Identity", ok: missing.length === 0, why: missing.length ? "missing: " + missing.join(", ") : "six of six fields" },
+      { name: "5 Outcome", ok: e.identity.rule !== null, why: "success " + e.success + (e.identity.rule ? ", rule " + e.identity.rule : ", no rule recorded") }
+    ];
+  }
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function render() {
+    var e = EPS[Number(sel.value)], C = checks(e);
+    var html = '<table class="sql-table"><thead><tr><th>Check</th><th>Result</th><th>Why</th></tr></thead><tbody>';
+    C.forEach(function (c) { html += "<tr><td>" + c.name + "</td><td><b>" + (c.ok ? "pass" : "FAIL") + "</b></td><td>" + esc(c.why) + "</td></tr>"; });
+    out.innerHTML = html + "</tbody></table>";
+    var fails = C.filter(function (c) { return !c.ok; }).map(function (c) { return c.name.slice(2).toLowerCase(); });
+    verdict.textContent = fails.length ? e.id + ": quarantine, failed " + fails.join(", ") + "." : e.id + ": passes all five checks and may go to training.";
+  }
+  sel.addEventListener("change", render);
+  render();
+})();
+</script>
+<style>
+  #wrnp1-inspect .sql-code { border: 1px solid var(--hairline); border-radius: 8px; max-width: 24rem; }
+  #wrnp1-inspect table.sql-table { margin: .6rem 0 .2rem; font-size: .85rem; }
+</style>
+</body>
+</html>

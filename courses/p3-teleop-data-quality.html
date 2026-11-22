@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Practitioner session 3 of 10. Teleop data quality: why human demonstrations vary by design, what pauses, re-grasps and failed takes look like in the log, why operator is a hidden variable, and how naive filters quietly delete the hard conditions. Filter twelve constructed Wrenfield episodes in pandas.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Teleop data quality - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Practitioner session 3 of 10. Demonstrations vary by design. Filter the mistakes, keep the variation, and never let a duration cut-off delete your hardest conditions.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/p3-teleop-data-quality.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Teleop data quality - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="Pauses, re-grasps, failed takes and operators: filtering demonstrations without filtering out the hard cases.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Practitioner session 3 · Teleop data quality - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Practitioner session 3 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Practitioner session 3 of 10</div>
+    <h1>Teleop <span class="accent">data quality</span></h1>
+    <p class="sub">A person driving a robot never does the same thing twice, and that is partly the point. Tonight you learn to tell the variation a policy needs from the mistakes it should not copy, read pauses, re-grasps and failed takes in the log, treat the operator as a variable, and filter demonstrations without quietly deleting the hard conditions. Wrenfield Lab and its twelve episodes are constructed; the research numbers are real and cited.</p>
+    <div class="chip-row">
+      <span class="chip level">🟡 Working depth</span>
+      <span class="chip audience">Data engineers who curate demonstration sets</span>
+      <span class="chip audience">ML engineers who train on teleoperated data</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:3">3-11 · Demonstrations vary</span>
+      <span class="a3" style="flex:4">11-23 · The log and the operators</span>
+      <span class="a4" style="flex:7">23-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Wrenfield wants a clean demonstration set</h2>
+    </div>
+    <p class="lede">Wrenfield Lab (constructed) has three operators collecting parcel-pick demonstrations. A week in, someone proposes the obvious cleanup: drop the slow takes, drop the ones with long pauses, drop anything with a re-grasp. It sounds like quality control. Tonight you find out what those three rules remove, and it is not mostly mistakes.</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> Why the variation between demonstrations is information, and what happened in one published rig when the model was not allowed to represent it. The four quality problems you can see in a teleoperation log, and the two you cannot. A filter widget that shows how a sensible-looking cut-off empties the dim and edge conditions from a constructed table. A per-operator coverage grid with its empty cell. And a pandas script that counts, by condition, what each filter removes.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>A demonstration is expensive, so every one you drop costs<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A filter feels free because deleting a row is free. Collecting it was not. Every episode you remove is an hour of someone's attention divided by however many takes fit in it, and if the filter removes the wrong ones, the cost is paid twice: once in collection, again in a policy that never saw the situations it fails on.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>Zhao, Kumar, Levine and Finn (2023) collected 50 demonstrations per task on their low-cost two-arm rig (100 for one harder task). That was about 10 to 20 minutes of recorded data per task, but 30 to 60 minutes of wall-clock time, because of resets between takes and mistakes by the teleoperator. Roughly half or more of the session was spent on things that never became training data.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Words for tonight<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Teleoperation.</strong> A person drives the robot, here by moving leader arms the robot's follower arms copy (practitioner session 1).</li>
+          <li><strong>Take.</strong> One attempt by an operator; it becomes an episode when it is recorded.</li>
+          <li><strong>Pause fraction.</strong> The share of an episode's time where the commanded motion is near zero. A Wrenfield house metric, constructed.</li>
+          <li><strong>Re-grasp.</strong> The gripper opens and closes again on the same object within one episode.</li>
+          <li><strong>Coverage.</strong> Which conditions (light, object position, operator) the set actually contains, counted, not assumed.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers why demonstrations vary by design</span>
+      <h2>Demonstrations vary, and the average does nothing</h2>
+      <span class="tag concept">8 min live</span>
+    </div>
+    <p class="lede">Ask one person to hand a parcel from the left gripper to the right gripper fifty times and you get fifty slightly different handovers. Each one works. A model that learns the average of them learns a handover that nobody performed, and it can land where no gripper is waiting. Variation in a demonstration set is not noise to be scrubbed; some of it is the task.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn top view of three demonstrations of the same handover. All three start at the left gripper holding a parcel. Demonstration 1 curves up and hands over high, demonstration 2 dips and hands over close, demonstration 3 curves down and hands over low. Each end has a circle where the right gripper waited. A dashed marigold path, the average of the three, ends between them where no gripper waited.">
+        <defs>
+          <filter id="wrnp3aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="31" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp3aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp3aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp3aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp3aK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3aA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp3aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp3aH" x="30" y="30">THREE DEMONSTRATIONS OF ONE HANDOVER, SEEN FROM ABOVE (CONSTRUCTED)</text>
+
+        <g filter="url(#wrnp3aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <!-- doodle: left gripper holding a parcel -->
+          <rect x="96" y="156" width="28" height="28" rx="3" transform="rotate(-0.8 110 170)" fill="url(#wrnp3aHc)"/>
+          <path d="M86 150 L86 190 M86 150 L100 150 M86 190 L100 190 M70 170 L86 170"/>
+          <path d="M126 170 C 266 60, 526 40, 712 72" stroke="#9B0865" stroke-width="2.4" marker-end="url(#wrnp3aAr)"/>
+          <path d="M126 170 C 256 250, 456 250, 552 182" stroke="#9B0865" stroke-width="2.4" marker-end="url(#wrnp3aAr)"/>
+          <path d="M126 170 C 306 300, 566 320, 712 280" stroke="#9B0865" stroke-width="2.4" marker-end="url(#wrnp3aAr)"/>
+          <path d="M126 170 C 276 203, 516 203, 654 178" stroke="#F4B63C" stroke-width="5" stroke-dasharray="10 8"/>
+          <circle cx="728" cy="72" r="14" fill="#FCEFF7"/>
+          <circle cx="568" cy="180" r="14" fill="#FCEFF7"/>
+          <circle cx="728" cy="280" r="14" fill="#FCEFF7"/>
+          <circle cx="670" cy="176" r="16" fill="#FEF4DD" stroke-dasharray="4 4"/>
+        </g>
+
+        <text class="wrnp3aS" x="110" y="214" text-anchor="middle">start</text>
+        <text class="wrnp3aL" x="752" y="68">demo 1</text>
+        <text class="wrnp3aS" x="752" y="84">handover high</text>
+        <text class="wrnp3aL" x="568" y="150" text-anchor="middle">demo 2</text>
+        <text class="wrnp3aS" x="568" y="136" text-anchor="middle">handover close</text>
+        <text class="wrnp3aL" x="752" y="276">demo 3</text>
+        <text class="wrnp3aS" x="752" y="292">handover low</text>
+        <text class="wrnp3aA" x="696" y="172">averaged path</text>
+        <text class="wrnp3aA" x="696" y="188">nobody waited here</text>
+        <text class="wrnp3aS" x="752" y="112">circle = where the</text>
+        <text class="wrnp3aS" x="752" y="126">right gripper waited</text>
+
+        <text class="wrnp3aN" x="30" y="326">Each demonstration works on its own. Their average is a fourth motion that no operator made and no gripper meets.</text>
+        <text class="wrnp3aN" x="30" y="346">Positions constructed. The behaviour follows Zhao et al. (2023): handover position differs every episode.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the dashed marigold path is what a model learns if it averages the demonstrations instead of representing their spread.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What happened when the model could not represent the spread<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Zhao et al. (2023) describe human demonstrations as "inherently stochastic", even from a single person: in their bimanual tasks the handover position differs every episode. Their model, ACT, is trained with a CVAE objective, a component that lets it represent several valid ways of doing the task instead of one blurred compromise.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>In their ablation on human demonstration data, removing the CVAE objective dropped success from 35.3 percent to 2 percent. Same data, same tasks; the only change was whether the model was allowed to keep the variation. The data team's lesson: the spread between demonstrations is part of the signal, so a cleanup that "reduces variance" can remove exactly what the model needed.</p>
+        </div>
+      </div>
+    </details>
+
+    <div class="grid-2">
+      <details class="card">
+        <summary><span class="mode live">Live</span>Variation you want: coverage<span class="mini">2 min</span><span class="caret">▶</span></summary>
+        <div class="body">
+          <p>Different handover heights, different approach angles, the parcel at the centre and at the edge, bright and dim light, three operators with three styles. Each is a situation the policy will meet when nobody is driving. Keep it, count it, and make sure it is spread across conditions rather than piled in one corner.</p>
+        </div>
+      </details>
+      <details class="card">
+        <summary><span class="mode live">Live</span>Variation you do not want: mistakes<span class="mini">2 min</span><span class="caret">▶</span></summary>
+        <div class="body">
+          <p>An operator who freezes to read a message, a knocked parcel that is pushed back by hand, a grasp that slips because the operator rushed, a hand in the camera frame. These are behaviours the policy would copy and conditions it will never see alone. Remove them, but by reason, with the reason recorded, not by a threshold that also catches the hard conditions.</p>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers what quality problems look like in the log</span>
+      <h2>Reading quality off the log, and where filters go wrong</h2>
+      <span class="tag concept">7 min live</span>
+    </div>
+    <p class="lede">You rarely get to watch every take. What you get is the log: commands at 50 rows a second, gripper events, camera frames and a success flag somebody set. Four problems are visible there: long stretches of near-zero motion, re-grasps, an operator in the frame, and a camera that cannot see the robot. Two are not: why the operator paused, and whether the success flag was set by a consistent rule.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn trace of commanded speed over a 15.6 second constructed episode recorded in dim light with the parcel at the edge. Three stretches fall below a near-zero threshold: a 2.2 second pause, a 1.4 second re-grasp and a 1.7 second pause. A marigold panel shows pause fraction as 5.3 seconds over 15.6 seconds, 0.34.">
+        <defs>
+          <filter id="wrnp3bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="37" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp3bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp3bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp3bH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp3bK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3bA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp3bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp3bH" x="30" y="30">EPISODE WF-P3-03 (CONSTRUCTED): DIM LIGHT, PARCEL AT THE EDGE, 15.6 S</text>
+
+        <g filter="url(#wrnp3bSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="215" y="82" width="99" height="122" rx="4" fill="url(#wrnp3bHc)" stroke="#B5338B"/>
+          <rect x="485" y="82" width="63" height="122" rx="4" fill="url(#wrnp3bHc)" stroke="#B5338B"/>
+          <rect x="647" y="82" width="77" height="122" rx="4" fill="url(#wrnp3bHc)" stroke="#B5338B"/>
+          <path d="M80 204 L800 204"/>
+          <path d="M80 188 L800 188" stroke="#66505E" stroke-width="1.5" stroke-dasharray="5 5"/>
+          <path d="M80 202 L110 122 L150 100 L190 130 L208 194 L215 199 L314 199 L330 122 L380 96 L430 110 L470 150 L485 199 L548 199 L560 130 L600 106 L635 170 L647 199 L724 199 L740 140 L770 150 L800 202" stroke="#9B0865" stroke-width="2.4"/>
+          <rect x="30" y="246" width="520" height="34" rx="6" transform="rotate(-0.4 290 263)" fill="#F4B63C"/>
+          <!-- doodle: camera -->
+          <rect x="826" y="94" width="34" height="22" rx="4" fill="#FFFFFF"/>
+          <circle cx="843" cy="105" r="6"/>
+        </g>
+
+        <text class="wrnp3bS" x="264" y="74" text-anchor="middle">pause 2.2 s</text>
+        <text class="wrnp3bS" x="516" y="74" text-anchor="middle">re-grasp 1.4 s</text>
+        <text class="wrnp3bS" x="685" y="74" text-anchor="middle">pause 1.7 s</text>
+        <text class="wrnp3bA" x="80" y="222">0 s</text>
+        <text class="wrnp3bA" x="800" y="222" text-anchor="end">15.6 s</text>
+        <text class="wrnp3bS" x="806" y="192">near zero</text>
+        <text class="wrnp3bS" x="843" y="134" text-anchor="middle">dim</text>
+        <text class="wrnp3bS" x="440" y="222" text-anchor="middle">commanded speed, 50 rows a second</text>
+        <text class="wrnp3bL" x="46" y="268">Pause fraction = 5.3 s near zero / 15.6 s = 0.34</text>
+
+        <text class="wrnp3bN" x="30" y="304">The log shows the operator stopped three times. It does not say whether that was hesitation or a hard parcel.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold number is what a pause filter sees; the reason behind each hatched stretch is what it cannot see.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The four you can see, and the protocol that prevents two<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Pauses.</strong> Long stretches of near-zero commanded motion. Could be hesitation, could be an operator waiting for a camera to refocus in dim light.</li>
+          <li><strong>Re-grasps.</strong> Open, re-approach, close. Could be a sloppy approach, could be a parcel at the edge of the reach that needs two tries for anyone.</li>
+          <li><strong>Operator in camera view.</strong> A hand or sleeve in the frame. Always a problem: it will not be there at run time.</li>
+          <li><strong>Camera cannot see the robot.</strong> A frame the policy cannot learn from. Always a problem.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>DROID (Khazatsky et al. 2024), 76k demonstration trajectories from 50 collectors over 12 months, wrote its collection protocol to prevent "camera cannot see robot" and "teleoperator in camera view" before they reached the data. Collectors marked each episode success or failure; failed episodes were excluded from policy training, and about 16k unsuccessful trajectories were released separately rather than thrown away. Note which way the rules point: the last two problems are prevented at collection, not filtered afterwards by a proxy.</p>
+        </div>
+      </div>
+    </details>
+
+    <div class="wk" id="wrnp3-filter">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">Twelve constructed Wrenfield episodes by three operators, written for this page. Switch each filter rule on or off; the page recounts what is kept and how many dim-light and edge episodes survive. All three rules start on.</span>
+      </div>
+      <div class="wk-body">
+        <div id="wrnp3-table"></div>
+        <label class="sql-label" for="wrnp3-pause">Rule 1: drop pause fraction over 0.3</label>
+        <select class="sql-code" id="wrnp3-pause">
+          <option value="1" selected>on</option>
+          <option value="0">off</option>
+        </select>
+        <label class="sql-label" for="wrnp3-dur">Rule 2: drop duration over 14 s</label>
+        <select class="sql-code" id="wrnp3-dur">
+          <option value="1" selected>on</option>
+          <option value="0">off</option>
+        </select>
+        <label class="sql-label" for="wrnp3-regrasp">Rule 3: drop any re-grasp</label>
+        <select class="sql-code" id="wrnp3-regrasp">
+          <option value="1" selected>on</option>
+          <option value="0">off</option>
+        </select>
+        <div id="wrnp3-out"></div>
+        <p class="sql-note" id="wrnp3-verdict">...</p>
+      </div>
+      <div class="wk-foot">Constructed table: every duration, pause fraction and condition was invented for teaching, and the thresholds are plausible-sounding rules, not a published standard. Hard = dim light or parcel at the edge. Your own data will differ.</div>
+    </div>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Why the filters remove the hard conditions<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>With all three rules on, the widget keeps 6 of 12 episodes, and none of the 5 dim-light or 4 edge episodes survive. Only one removed take, wf-p3-10, is a plain mistake: a long pause in normal light with the parcel at the centre. Every other removal is an operator doing a harder thing more slowly. Duration, pauses and re-grasps are not measures of quality; they are measures of difficulty with some quality mixed in. A filter on a difficulty proxy is a filter on difficulty.</p>
+        <p>Speed is not a free proxy either. In the user study of Zhao et al. (2023), six participants teleoperating at 5 Hz instead of 50 Hz took 62 percent longer. If your rig's frame rate or latency changed mid-collection, a duration filter removes the episodes recorded on the slow setup, not the bad ones.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The success flag is also a quality field<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The collector sets the flag. If one operator marks "parcel lifted" as success and another waits for "parcel in tote", the flag means two things. Before using it as a filter, check success rate per operator against the written rule (practitioner session 1 asks for the rule to be stored next to the flag). A failed episode is not a quality problem; it is a labelled outcome. Keep it, with its reason, in its own table.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers per-operator effects</span>
+      <h2>The operator is a hidden variable</h2>
+      <span class="tag concept">5 min live</span>
+    </div>
+    <p class="lede">Each operator brings a style (how fast, how they approach, where they hand over) and, less obviously, a set of conditions: the scenes they happened to set up, the shifts they worked, the parcels they placed. If one operator did most of the hard conditions, then "operator B is slow" and "dim light is slow" are the same column. Report per operator, rotate operators across conditions, and the two separate.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 324" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn coverage grid of the twelve constructed Wrenfield episodes: three operators by four conditions. Operator A: 3 normal centre, 0 dim centre, 0 normal edge, 1 dim edge. Operator B: 1, 1, 0, 2. Operator C: 3, 0, 0, 1. The normal light with parcel at the edge column, empty for all three operators, is highlighted in marigold.">
+        <defs>
+          <filter id="wrnp3cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="41" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp3cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp3cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp3cH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp3cK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3cA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp3cV { font: 800 18px Inter, sans-serif; fill: #6B0546; }
+          .wrnp3cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp3cH" x="30" y="30">WHO COVERED WHICH CONDITION: 12 CONSTRUCTED EPISODES</text>
+
+        <g filter="url(#wrnp3cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="200" y="80" width="150" height="50" rx="4" fill="#FFFFFF"/>
+          <rect x="350" y="80" width="150" height="50" rx="4" fill="#FFFFFF"/>
+          <rect x="500" y="80" width="150" height="150" rx="4" fill="#F4B63C"/>
+          <rect x="650" y="80" width="150" height="50" rx="4" fill="#FFFFFF"/>
+          <rect x="200" y="130" width="150" height="50" rx="4" fill="#FFFFFF"/>
+          <rect x="350" y="130" width="150" height="50" rx="4" fill="#FCEFF7"/>
+          <rect x="650" y="130" width="150" height="50" rx="4" fill="#FFFFFF"/>
+          <rect x="200" y="180" width="150" height="50" rx="4" fill="#FFFFFF"/>
+          <rect x="350" y="180" width="150" height="50" rx="4" fill="#FFFFFF"/>
+          <rect x="650" y="180" width="150" height="50" rx="4" fill="#FFFFFF"/>
+          <path d="M500 130 L650 130 M500 180 L650 180" stroke-dasharray="4 5"/>
+          <!-- doodle: a parcel at the edge -->
+          <rect x="820" y="40" width="26" height="22" rx="2" transform="rotate(-0.8 833 51)" fill="url(#wrnp3cHc)"/>
+          <path d="M816 70 L850 70"/>
+        </g>
+
+        <text class="wrnp3cL" x="275" y="68" text-anchor="middle">normal, centre</text>
+        <text class="wrnp3cL" x="425" y="68" text-anchor="middle">dim, centre</text>
+        <text class="wrnp3cL" x="575" y="68" text-anchor="middle">normal, edge</text>
+        <text class="wrnp3cL" x="725" y="68" text-anchor="middle">dim, edge</text>
+
+        <text class="wrnp3cL" x="186" y="110" text-anchor="end">Operator A</text>
+        <text class="wrnp3cL" x="186" y="160" text-anchor="end">Operator B</text>
+        <text class="wrnp3cL" x="186" y="210" text-anchor="end">Operator C</text>
+
+        <text class="wrnp3cV" x="275" y="111" text-anchor="middle">3</text>
+        <text class="wrnp3cV" x="425" y="111" text-anchor="middle">0</text>
+        <text class="wrnp3cV" x="575" y="111" text-anchor="middle">0</text>
+        <text class="wrnp3cV" x="725" y="111" text-anchor="middle">1</text>
+        <text class="wrnp3cV" x="275" y="161" text-anchor="middle">1</text>
+        <text class="wrnp3cV" x="425" y="161" text-anchor="middle">1</text>
+        <text class="wrnp3cV" x="575" y="161" text-anchor="middle">0</text>
+        <text class="wrnp3cV" x="725" y="161" text-anchor="middle">2</text>
+        <text class="wrnp3cV" x="275" y="211" text-anchor="middle">3</text>
+        <text class="wrnp3cV" x="425" y="211" text-anchor="middle">0</text>
+        <text class="wrnp3cV" x="575" y="211" text-anchor="middle">0</text>
+        <text class="wrnp3cV" x="725" y="211" text-anchor="middle">1</text>
+
+        <text class="wrnp3cA" x="575" y="248" text-anchor="middle">nobody set this up</text>
+
+        <text class="wrnp3cN" x="30" y="272">B covered three of the five hard episodes, so "B is slow" and "hard conditions are slow" cannot be told apart.</text>
+        <text class="wrnp3cN" x="30" y="290">The marigold column is a gap no filter created and no filter can fix: it needs a collection plan.</text>
+        <text class="wrnp3cN" x="30" y="308">Constructed table, the same twelve episodes as the widget above.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold column is the condition the policy will meet and the set never shows it.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Three habits that make the operator visible<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Report per operator.</strong> Episode count, success count, mean pause fraction and how many hard-condition episodes, one row each. The build-along prints exactly this table.</li>
+          <li><strong>Rotate operators across conditions.</strong> Write the schedule as a grid like the one above and fill it deliberately. An empty cell is a planning decision, not an accident to discover after training.</li>
+          <li><strong>Keep failures with a reason.</strong> A failure table (episode, operator, condition, reason) tells you whether a condition is hard for everyone or for one person. Deleting failures deletes that evidence.</li>
+        </ul>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>DROID's 76k trajectories came from 50 data collectors across 564 scenes, on the same hardware setup replicated 18 times. At that scale the operator stops being a footnote and becomes a column like scene and calibration: every comparison across the set quietly compares people too, unless the collection plan spread them across conditions.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>What the literature does not settle<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>How much operator style helps (more modes for the model to represent) or hurts (inconsistent strategies the model cannot reconcile) is not settled by the sources read for this session. Zhao et al. (2023) show that a model which can represent variation does far better on human data than one that cannot; they do not measure how many operators is too many. Treat operator diversity as a variable you report and test, not one you assume.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ BUILD-ALONG ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Count what each filter removes, by condition</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Python 3.10 or later with pandas. You build the same twelve constructed Wrenfield episodes as the widget, summarise them per operator, apply the three filter rules one at a time and count what each removes by condition, then compare the naive set with a reasoned one: drop only pauses that the condition does not explain, and move failures to their own table.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 280" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn bars of dataset composition. All twelve constructed episodes: 5 hard, 42 percent. Naive filters: 6 episodes, none hard. Reasoned filtering: 9 episodes, 4 hard, 44 percent, highlighted in marigold, plus a separate failure table of 2.">
+        <defs>
+          <filter id="wrnp3dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="43" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp3dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp3dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp3dH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3dL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3dS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp3dK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp3dN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp3dH" x="30" y="30">WHAT IS LEFT TO TRAIN ON: ONE BOX PER CONSTRUCTED EPISODE</text>
+
+        <g filter="url(#wrnp3dSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="200" y="56" width="250" height="36" rx="4" transform="rotate(-0.3 325 74)" fill="url(#wrnp3dHc)"/>
+          <rect x="450" y="56" width="350" height="36" rx="4" transform="rotate(-0.3 625 74)" fill="#FFFFFF"/>
+          <rect x="200" y="122" width="300" height="36" rx="4" transform="rotate(0.3 350 140)" fill="#FFFFFF"/>
+          <rect x="200" y="188" width="200" height="36" rx="4" transform="rotate(-0.3 300 206)" fill="#F4B63C"/>
+          <rect x="400" y="188" width="250" height="36" rx="4" transform="rotate(-0.3 525 206)" fill="#FFFFFF"/>
+          <rect x="690" y="188" width="100" height="36" rx="4" transform="rotate(0.4 740 206)" fill="#FCEFF7" stroke-dasharray="5 4"/>
+          <path d="M650 206 L684 206" marker-end="url(#wrnp3dAr)"/>
+        </g>
+
+        <text class="wrnp3dL" x="186" y="72" text-anchor="end">All 12</text>
+        <text class="wrnp3dS" x="186" y="88" text-anchor="end">5 hard, 42%</text>
+        <text class="wrnp3dL" x="186" y="138" text-anchor="end">Naive filters</text>
+        <text class="wrnp3dS" x="186" y="154" text-anchor="end">6 kept, 0 hard</text>
+        <text class="wrnp3dL" x="186" y="204" text-anchor="end">Reasoned</text>
+        <text class="wrnp3dS" x="186" y="220" text-anchor="end">9 kept, 4 hard, 44%</text>
+
+        <text class="wrnp3dK" x="325" y="78" text-anchor="middle">hard 5</text>
+        <text class="wrnp3dL" x="625" y="78" text-anchor="middle">normal and centre 7</text>
+        <text class="wrnp3dL" x="350" y="144" text-anchor="middle">normal and centre 6</text>
+        <text class="wrnp3dS" x="516" y="144">no dim, no edge left</text>
+        <text class="wrnp3dK" x="300" y="210" text-anchor="middle">hard 4</text>
+        <text class="wrnp3dL" x="525" y="210" text-anchor="middle">normal and centre 5</text>
+        <text class="wrnp3dL" x="740" y="210" text-anchor="middle">failures 2</text>
+
+        <text class="wrnp3dN" x="30" y="252">Reasoned: drop the one unexplained pause, move the two failures to their own table with a reason, keep the rest.</text>
+        <text class="wrnp3dN" x="30" y="270">Constructed table; the counts are the script's printed output below.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold segment is the hard-condition share that the naive rules drove to zero and reasoned filtering kept.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Build the constructed table</h4>
+        <p>Twelve episodes, four per operator. Hard means dim light or the parcel at the edge of reach. These are the same values as the widget's table.</p>
+        <div class="prompt-box good"><span class="label">teleop.py, part 1</span>import pandas as pd
+
+# 12 constructed Wrenfield episodes, 3 operators
+eps = pd.DataFrame({
+    "episode": [f"wf-p3-{i:02d}" for i in range(1, 13)],
+    "operator": ["A"] * 4 + ["B"] * 4 + ["C"] * 4,
+    "duration_s": [9.8, 11.2, 15.6, 10.4, 12.9, 14.8, 10.1, 14.6, 8.9, 16.2, 9.5, 13.1],
+    "pause_frac": [0.08, 0.12, 0.34, 0.10, 0.22, 0.31, 0.09, 0.27, 0.05, 0.41, 0.07, 0.18],
+    "regrasps": [0, 0, 1, 0, 1, 0, 0, 2, 0, 0, 0, 1],
+    "success": [True, True, True, False, True, True, True, True, True, True, True, False],
+    "light": ["normal", "normal", "dim", "normal", "dim", "dim",
+              "normal", "dim", "normal", "normal", "normal", "dim"],
+    "edge": [False, False, True, False, False, True, False, True, False, False, False, True],
+})
+eps["hard"] = (eps["light"] == "dim") | eps["edge"]</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Summarise per operator</h4>
+        <p>One row per operator: episodes, successes, mean pause fraction and how many hard-condition episodes they recorded. Read the pause column next to the hard column before judging anyone.</p>
+        <div class="prompt-box good"><span class="label">teleop.py, part 2</span>print(eps.groupby("operator").agg(
+    episodes=("episode", "size"),
+    successes=("success", "sum"),
+    mean_pause=("pause_frac", "mean"),
+    hard=("hard", "sum"),
+).round(3))</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Apply each rule alone and count what it removes</h4>
+        <p>Each rule is a boolean mask of episodes to drop. Count the removed episodes by condition; the last column is the only place a plain mistake can hide.</p>
+        <div class="prompt-box good"><span class="label">teleop.py, part 3</span>rules = {
+    "pause over 0.3": eps["pause_frac"] &gt; 0.3,
+    "duration over 14 s": eps["duration_s"] &gt; 14,
+    "any re-grasp": eps["regrasps"] &gt; 0,
+}
+print()
+for name, drop in rules.items():
+    gone = eps[drop]
+    print(f"{name:20s} removes {len(gone)}: dim {int((gone.light == 'dim').sum())}, "
+          f"edge {int(gone.edge.sum())}, normal-and-centre {int((~gone.hard).sum())}")</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Naive versus reasoned</h4>
+        <p>Naive drops anything any rule catches. Reasoned drops a long pause only when the condition does not explain it, and moves failures to their own table instead of deleting them.</p>
+        <div class="prompt-box good"><span class="label">teleop.py, part 4</span>naive = eps[~(rules["pause over 0.3"] | rules["duration over 14 s"] | rules["any re-grasp"])]
+unexplained_pause = (eps["pause_frac"] &gt; 0.3) &amp; ~eps["hard"]
+failures = eps[~eps["success"]]           # kept, with a reason, in their own table
+reasoned = eps[~unexplained_pause &amp; eps["success"]]
+
+def share(df):
+    return f"{len(df)} episodes, dim {int((df.light == 'dim').sum())}, edge {int(df.edge.sum())}, hard share {df.hard.mean():.0%}"
+
+print()
+print("all     :", share(eps))
+print("naive   :", share(naive))
+print("reasoned:", share(reasoned))
+print("failure table:", list(failures["episode"]))</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Run it and read the output</h4>
+        <p>Run <code>python3 teleop.py</code> from a scratch folder. The output below is what the script printed when this page was written; the table is fixed, so yours should match.</p>
+        <div class="prompt-box good"><span class="label">Expected output</span>          episodes  successes  mean_pause  hard
+operator
+A                4          3       0.160     1
+B                4          4       0.222     3
+C                4          3       0.178     1
+
+pause over 0.3       removes 3: dim 2, edge 2, normal-and-centre 1
+duration over 14 s   removes 4: dim 3, edge 3, normal-and-centre 1
+any re-grasp         removes 4: dim 4, edge 3, normal-and-centre 0
+
+all     : 12 episodes, dim 5, edge 4, hard share 42%
+naive   : 6 episodes, dim 0, edge 0, hard share 0%
+reasoned: 9 episodes, dim 4, edge 3, hard share 44%
+failure table: ['wf-p3-04', 'wf-p3-12']</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Extend it: a reason column</h4>
+        <p>Add a <code>reason</code> column to the failure table (for example "slip at edge", "dropped in tote") and print failures grouped by condition. Then add a crosstab of operator against light and edge, and find the empty cell from Part 3 in your own output.</p>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> Before any filter runs, print what it removes by condition. A rule that removes zero normal-and-centre episodes, like "any re-grasp" here, is not a quality filter at all: it is a difficulty filter with a quality name.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">In Zhao et al. (2023), removing the CVAE objective when training on human demonstrations dropped success from 35.3 percent to 2 percent. What does that say about averaging demonstrations?</p>
+      <button class="qopt" type="button">A · Human demonstrations are too noisy to train on at all</button>
+      <button class="qopt" type="button">B · More demonstrations would have fixed it</button>
+      <button class="qopt" type="button">C · Demonstrations vary by design, and a model that averages them learns a motion nobody made; it must represent the variation</button>
+      <p class="qwhy">The same data worked with the CVAE objective. What failed was collapsing several valid ways of doing the task into one average, like a handover that ends where no gripper waits.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">Why is "drop episodes longer than 14 seconds" a biased filter on Wrenfield's constructed table?</p>
+      <button class="qopt" type="button">A · Duration tracks difficulty: it removes 3 dim and 3 edge episodes and only 1 normal-and-centre one, so the hard conditions leave the set</button>
+      <button class="qopt" type="button">B · It is not biased; long episodes are mistakes</button>
+      <button class="qopt" type="button">C · Because 14 is an even number</button>
+      <p class="qwhy">A slow take is often a hard take. Zhao et al. (2023) also found 5 Hz teleoperation took 62 percent longer than 50 Hz, so duration can track the rig as well as the operator.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">What should a data team do with failed episodes?</p>
+      <button class="qopt" type="button">A · Delete them so they cannot leak into training</button>
+      <button class="qopt" type="button">B · Keep them out of the imitation training set but store them with a reason, the way DROID released about 16k unsuccessful trajectories separately</button>
+      <button class="qopt" type="button">C · Relabel them as successes if the parcel moved at all</button>
+      <p class="qwhy">A failure is a labelled outcome. Kept with operator, condition and reason, it shows which conditions are hard for everyone and feeds evaluation and later rounds (practitioner session 8).</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">Before session 4</span>
+      <h2>Homework</h2>
+    </div>
+    <ol>
+      <li>Add a fourth rule to <code>teleop.py</code>, "operator in camera view", as a boolean column, and show that it removes episodes regardless of condition. Why is that the shape of a real quality rule?</li>
+      <li>Rewrite the reasoned filter so a long pause in a hard condition is kept only if a reviewer has tagged its reason. Print how many episodes would need a review.</li>
+      <li>Draw the operator by condition grid for a dataset you know (any domain where people produce the labels). Where is the empty cell?</li>
+      <li>Write a one-paragraph collection plan for Wrenfield's next week that fills the marigold column. Practitioner session 4 asks what happens when the data comes from different robots, not just different people.</li>
+    </ol>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Demonstrations vary by design</span><span class="note">Zhao, Kumar, Levine and Finn (2023), arXiv 2304.13705: "inherently stochastic" demonstrations, CVAE ablation 35.3 percent to 2 percent, 50 demos in 30 to 60 minutes wall-clock, 5 Hz 62 percent slower. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Collection protocol and failed episodes</span><span class="note">Khazatsky et al. (2024), DROID, arXiv 2403.12945: 76k trajectories, 50 collectors, protocol against "camera cannot see robot" and "teleoperator in camera view", about 16k unsuccessful released separately. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Filters, coverage and operators</span><span class="note">Constructed Wrenfield table of 12 episodes; the widget computes in the page and the build-along output was run and copied.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Intervention logs as labels</span><span class="note">Named tonight. Practitioner session 8.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Mixing data across robots</span><span class="note">Named tonight. Practitioner session 4.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">General label quality and annotator agreement</span><span class="note">Not taught here; the success-flag rule is the only labelling question tonight.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>Variation is signal.</strong> Demonstrations differ by design; a model must represent the spread, not average it.</div>
+      <div class="cheat-item"><strong>The ablation.</strong> Without the CVAE objective on human data: 35.3 percent to 2 percent (Zhao et al. 2023).</div>
+      <div class="cheat-item"><strong>The cost.</strong> 50 demos per task took 30 to 60 minutes wall-clock; every dropped episode was paid for.</div>
+      <div class="cheat-item"><strong>Visible in the log.</strong> Pauses, re-grasps, operator in view, camera cannot see robot.</div>
+      <div class="cheat-item"><strong>Not visible.</strong> Why the operator paused; whether the success rule was applied consistently.</div>
+      <div class="cheat-item"><strong>Proxy filters.</strong> Duration, pauses and re-grasps track difficulty; print what they remove by condition first.</div>
+      <div class="cheat-item"><strong>The operator.</strong> A hidden variable: report per operator, rotate across conditions, fill the grid on purpose.</div>
+      <div class="cheat-item"><strong>Failures.</strong> Out of the imitation set, into a failure table with a reason. Never deleted.</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>Mixing data across robots.</strong> When the demonstrations come from different arms, grippers and cameras, what has to line up, and when pooling helps or hurts.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Practitioner session 3 of 10 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="p2-coordinate-frames-and-calibration.html">← Prev: Coordinate frames and calibration</a>
+        <a href="p4-mixing-data-across-robots.html">Next: Mixing data across robots →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  // Constructed Wrenfield table, identical to the build-along.
+  var EPS = [
+    { id: "wf-p3-01", op: "A", dur: 9.8,  pause: 0.08, rg: 0, ok: true,  light: "normal", edge: false },
+    { id: "wf-p3-02", op: "A", dur: 11.2, pause: 0.12, rg: 0, ok: true,  light: "normal", edge: false },
+    { id: "wf-p3-03", op: "A", dur: 15.6, pause: 0.34, rg: 1, ok: true,  light: "dim",    edge: true  },
+    { id: "wf-p3-04", op: "A", dur: 10.4, pause: 0.10, rg: 0, ok: false, light: "normal", edge: false },
+    { id: "wf-p3-05", op: "B", dur: 12.9, pause: 0.22, rg: 1, ok: true,  light: "dim",    edge: false },
+    { id: "wf-p3-06", op: "B", dur: 14.8, pause: 0.31, rg: 0, ok: true,  light: "dim",    edge: true  },
+    { id: "wf-p3-07", op: "B", dur: 10.1, pause: 0.09, rg: 0, ok: true,  light: "normal", edge: false },
+    { id: "wf-p3-08", op: "B", dur: 14.6, pause: 0.27, rg: 2, ok: true,  light: "dim",    edge: true  },
+    { id: "wf-p3-09", op: "C", dur: 8.9,  pause: 0.05, rg: 0, ok: true,  light: "normal", edge: false },
+    { id: "wf-p3-10", op: "C", dur: 16.2, pause: 0.41, rg: 0, ok: true,  light: "normal", edge: false },
+    { id: "wf-p3-11", op: "C", dur: 9.5,  pause: 0.07, rg: 0, ok: true,  light: "normal", edge: false },
+    { id: "wf-p3-12", op: "C", dur: 13.1, pause: 0.18, rg: 1, ok: false, light: "dim",    edge: true  }
+  ];
+  var tbl = document.getElementById("wrnp3-table");
+  var out = document.getElementById("wrnp3-out");
+  var verdict = document.getElementById("wrnp3-verdict");
+  var sP = document.getElementById("wrnp3-pause");
+  var sD = document.getElementById("wrnp3-dur");
+  var sR = document.getElementById("wrnp3-regrasp");
+  if (!tbl || !out || !sP || !sD || !sR) return;
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+  function dropped(e) {
+    var why = [];
+    if (sP.value === "1" && e.pause > 0.3) why.push("pause");
+    if (sD.value === "1" && e.dur > 14) why.push("duration");
+    if (sR.value === "1" && e.rg > 0) why.push("re-grasp");
+    return why;
+  }
+  function render() {
+    var html = '<table class="sql-table"><thead><tr><th>Episode</th><th>Op</th><th>Duration s</th><th>Pause</th><th>Re-grasps</th><th>Success</th><th>Light</th><th>Edge</th><th>Filter</th></tr></thead><tbody>';
+    var kept = [], dimAll = 0, edgeAll = 0;
+    EPS.forEach(function (e) {
+      var why = dropped(e);
+      if (e.light === "dim") dimAll++;
+      if (e.edge) edgeAll++;
+      if (!why.length) kept.push(e);
+      html += "<tr><td>" + e.id + "</td><td>" + e.op + "</td><td>" + e.dur.toFixed(1) + "</td><td>" + e.pause.toFixed(2) + "</td><td>" + e.rg + "</td><td>" + (e.ok ? "yes" : "no") + "</td><td>" + e.light + "</td><td>" + (e.edge ? "yes" : "no") + "</td><td><b>" + (why.length ? "dropped: " + esc(why.join(", ")) : "kept") + "</b></td></tr>";
+    });
+    tbl.innerHTML = '<div class="sql-tablewrap">' + html + "</tbody></table></div>";
+    var dimK = kept.filter(function (e) { return e.light === "dim"; }).length;
+    var edgeK = kept.filter(function (e) { return e.edge; }).length;
+    var easyK = kept.filter(function (e) { return e.light !== "dim" && !e.edge; }).length;
+    var perOp = ["A", "B", "C"].map(function (o) {
+      return o + " " + kept.filter(function (e) { return e.op === o; }).length + " of 4";
+    }).join(", ");
+    out.innerHTML = '<table class="sql-table"><tbody>' +
+      "<tr><td>Episodes kept</td><td><b>" + kept.length + " of " + EPS.length + "</b></td></tr>" +
+      "<tr><td>Dim-light episodes kept</td><td><b>" + dimK + " of " + dimAll + "</b></td></tr>" +
+      "<tr><td>Edge episodes kept</td><td><b>" + edgeK + " of " + edgeAll + "</b></td></tr>" +
+      "<tr><td>Normal light, centre kept</td><td><b>" + easyK + " of 7</b></td></tr>" +
+      "<tr><td>Kept per operator</td><td><b>" + esc(perOp) + "</b></td></tr>" +
+      "</tbody></table>";
+    var hardK = kept.filter(function (e) { return e.light === "dim" || e.edge; }).length;
+    verdict.textContent = hardK === 0
+      ? "No hard-condition episode survives. The filtered set is a normal-light, centre-of-reach dataset now."
+      : hardK + " of 5 hard-condition episodes survive. Check which rule removed the rest, and whether any removal was a real mistake.";
+  }
+  [sP, sD, sR].forEach(function (s) { s.addEventListener("change", render); });
+  render();
+})();
+</script>
+<style>
+  #wrnp3-filter .sql-code { border: 1px solid var(--hairline); border-radius: 8px; max-width: 12rem; }
+  #wrnp3-filter table.sql-table { margin: .6rem 0 .2rem; font-size: .82rem; }
+</style>
+</body>
+</html>

@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Practitioner session 7 of 10. Evaluating a policy in 20 trials: the Wilson interval and why the Wald interval collapses at 0 of n and n of n, Fisher's exact test for two policies, a matched and interleaved evaluation design, and what the Wrenfield bench shows at 20 trials against 200. Build Wilson and Fisher in plain Python and write an evaluation plan.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Evaluating a policy in 20 trials - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Practitioner session 7 of 10. 18 of 20 is 0.699 to 0.972. 18 of 20 against 15 of 20 is p = 0.4075. How to run, read and size a small robot evaluation honestly.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/p7-evaluating-a-policy-in-20-trials.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Evaluating a policy in 20 trials - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="Wilson intervals, Fisher's exact test, matched and interleaved trials, and the 20-trial row of the bench.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Practitioner session 7 · Evaluating a policy in 20 trials - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Practitioner session 7 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Practitioner session 7 of 10</div>
+    <h1>Evaluating a policy in <span class="accent">20 trials</span></h1>
+    <p class="sub">Real robot trials cost minutes each, so most policy evaluations live between ten and fifty of them. Tonight you do the statistics a small evaluation needs and the design that makes it fair: the Wilson interval and why the textbook one fails at a perfect score, Fisher's exact test for two policies, matched and interleaved trials judged blind, and how many trials a difference really costs. Wrenfield Lab and its policies are constructed; the research numbers are real and cited, and the interval and test arithmetic is real.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Advanced</span>
+      <span class="chip audience">ML engineers who run robot evaluations</span>
+      <span class="chip audience">Data scientists asked to sign off a policy</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:3">3-11 · The interval</span>
+      <span class="a3" style="flex:4">11-23 · Two policies and the bench</span>
+      <span class="a4" style="flex:7">23-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Wrenfield has two policies and one afternoon on the robot</h2>
+    </div>
+    <p class="lede">Wrenfield Lab (constructed) has a new grasp policy, A, and the one in use, B. The robot is free for one afternoon: roughly forty real trials once resets are counted. Leader session 3 showed the leadership team why "90 percent against 75 percent" from twenty trials each cannot rank the two. Tonight you are the person who has to design the afternoon, compute the intervals, run the test and write down how many trials a real answer would need.</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> The Wilson interval as a formula you can write from memory, and the exact place the Wald interval breaks. Fisher's exact test for two policies, and when a paired test on matched starts is the better tool. A live comparator that prints both intervals, the p value and the trials per arm a difference would need. The 20-trial and 200-trial rows of the Wrenfield bench side by side. And a plain-Python script that reproduces 0.699 to 0.972 and p = 0.4075, plus an evaluation plan with initial conditions, an interleaved order, a success rule and n per arm.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What evaluation reports usually leave out<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A success rate is the number everyone quotes and the number that, on its own, says the least. It needs its trial count, the conditions the trials started from, the rule that decided success, and some statistical analysis. Without those four, two rates from two teams are not comparable, and two rates from one team may not be either.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>Kress-Gazit and colleagues (2024), in "Robot Learning as an Empirical Science", observe that robot learning papers usually report a success rate with little information on the number of runs, the initial conditions, the success criteria or any statistical analysis. They recommend reporting all four, plus complementary metrics and qualitative failure modes. Their practices for running the trials themselves (blind, interleaved, matched, one session) are the design half of tonight.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Words for tonight<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Trial.</strong> One rollout of a policy from a recorded initial condition, judged once by a written rule.</li>
+          <li><strong>Interval.</strong> The range of true success rates that could plausibly have produced the count you saw. Here, 95 percent intervals.</li>
+          <li><strong>Wald interval.</strong> Rate plus or minus 1.96 standard errors. Fine at large n and middling rates; broken at the ends.</li>
+          <li><strong>Wilson interval.</strong> The score interval of Wilson (1927, reported). Keeps a width at 0 of n and n of n.</li>
+          <li><strong>Fisher's exact test.</strong> For two independent counts: how often a split at least this uneven appears when the two policies are equally good.</li>
+          <li><strong>Discordant pair.</strong> On one matched start, one policy succeeded and the other failed. A paired test reads only these.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the Wilson interval and where the Wald interval fails</span>
+      <h2>At 20 of 20, the textbook interval says "exactly 100 percent"</h2>
+      <span class="tag concept">8 min live</span>
+    </div>
+    <p class="lede">The interval most people were taught is the Wald interval: rate plus or minus 1.96 standard errors, with the standard error computed from the observed rate. At 20 of 20 the observed rate is 1, the standard error is 0, and the interval is 1 to 1. A perfect score from twenty trials becomes a certainty. Small robot evaluations produce perfect scores and zero scores often, so the failure lands exactly where you work.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 312" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn comparison on a 0 to 1 axis. Wald at 20 of 20 is a single point at 1, zero width. Wilson at 20 of 20, in marigold, runs from 0.839 to 1. Wald at 0 of 20 is a single point at 0. Wilson at 0 of 20 runs from 0 to 0.161.">
+        <defs>
+          <filter id="wrnp7aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="71" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp7aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp7aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp7aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp7aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp7aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp7aA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp7aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp7aH" x="30" y="30">THE SAME TWO COUNTS, TWO WAYS TO DRAW THE INTERVAL</text>
+
+        <g filter="url(#wrnp7aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="830" cy="68" r="5" fill="#6B0546"/>
+          <rect x="720" y="100" width="110" height="14" rx="4" transform="rotate(-0.5 775 107)" fill="#F4B63C"/>
+          <circle cx="830" cy="107" r="5" fill="#6B0546"/>
+          <circle cx="150" cy="146" r="5" fill="#6B0546"/>
+          <rect x="150" y="178" width="110" height="14" rx="4" transform="rotate(0.5 205 185)" fill="#FCEFF7"/>
+          <circle cx="150" cy="185" r="5" fill="#6B0546"/>
+          <path d="M150 222 L830 222"/>
+          <path d="M150 222 L150 228 M320 222 L320 228 M490 222 L490 228 M660 222 L660 228 M830 222 L830 228"/>
+          <!-- doodle: a gripper -->
+          <path d="M836 34 L836 20 M824 20 L848 20 M824 20 L824 38 M848 20 L848 38" stroke="#B5338B" stroke-width="2.5"/>
+        </g>
+
+        <text class="wrnp7aL" x="30" y="72">Wald, 20 of 20</text>
+        <text class="wrnp7aS" x="814" y="72" text-anchor="end">1.000 to 1.000: zero width</text>
+        <text class="wrnp7aL" x="30" y="111">Wilson, 20 of 20</text>
+        <text class="wrnp7aS" x="706" y="111" text-anchor="end">0.839 to 1</text>
+        <text class="wrnp7aL" x="30" y="150">Wald, 0 of 20</text>
+        <text class="wrnp7aS" x="166" y="150">0.000 to 0.000: zero width</text>
+        <text class="wrnp7aL" x="30" y="189">Wilson, 0 of 20</text>
+        <text class="wrnp7aS" x="274" y="189">0 to 0.161</text>
+
+        <text class="wrnp7aA" x="150" y="244" text-anchor="middle">0</text>
+        <text class="wrnp7aA" x="320" y="244" text-anchor="middle">0.25</text>
+        <text class="wrnp7aA" x="490" y="244" text-anchor="middle">0.5</text>
+        <text class="wrnp7aA" x="660" y="244" text-anchor="middle">0.75</text>
+        <text class="wrnp7aA" x="830" y="244" text-anchor="middle">1</text>
+
+        <text class="wrnp7aN" x="30" y="276">Wald: at 0 or n successes the standard error is 0, so the interval has no width at all.</text>
+        <text class="wrnp7aN" x="30" y="296">Wilson (1927, reported) keeps a width set by n. Values from the engine on this page.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold bar is what 20 perfect trials actually license: a true rate somewhere above about 84 percent, not 100.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The Wilson interval, as a formula you can write down<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Wilson's trick is to invert the test instead of plugging in the observed rate. The interval is every true rate p for which your count k of n would not be surprising at the 95 percent level. Solving that quadratic gives a centre pulled towards one half and a half-width that never reaches zero.</p>
+        <div class="prompt-box good"><span class="label">Wilson 95% score interval</span>p_hat  = k / n
+z      = 1.959964            # two-sided 95%
+den    = 1 + z^2 / n
+centre = (p_hat + z^2 / (2 n)) / den
+half   = (z / den) * sqrt( p_hat (1 - p_hat) / n + z^2 / (4 n^2) )
+lo, hi = max(0, centre - half), min(1, centre + half)</div>
+        <p>At k = 0 the term under the root is z^2 / (4 n^2), not zero, so the upper end is z^2 / (n + z^2). At n = 20 that is 0.161: the bound the engine checks against on every page load.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The six counts worth knowing by heart<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <table class="sql-table">
+          <thead><tr><th>Count</th><th>Where it comes from</th><th>Wilson 95%</th></tr></thead>
+          <tbody>
+            <tr><td>18 of 20</td><td>Wrenfield policy A (constructed)</td><td>0.699 to 0.972</td></tr>
+            <tr><td>15 of 20</td><td>Wrenfield policy B (constructed)</td><td>0.531 to 0.888</td></tr>
+            <tr><td>0 of 20</td><td>any total failure at 20</td><td>0 to 0.161</td></tr>
+            <tr><td>20 of 20</td><td>any perfect score at 20</td><td>0.839 to 1</td></tr>
+            <tr><td>25 of 25</td><td>a perfect score at the 25 real trials Zhao et al. (2023) ran per task</td><td>0.867 to 1</td></tr>
+            <tr><td>38 of 40</td><td>Tobin et al. (2017), grasps in clutter, derived from their counts</td><td>0.835 to 0.986</td></tr>
+          </tbody>
+        </table>
+        <p>Read the third column, not the first. 18 of 20 and 20 of 20 differ by two trials, and their intervals share everything from 0.839 to 0.972. The perfect score does not exclude a policy that fails one time in six.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why not the exact (Clopper-Pearson) interval?<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>There are several honest intervals for a proportion. The "exact" interval built from the binomial distribution guarantees at least 95 percent coverage and is therefore wider than it needs to be on average. Wilson's aims at 95 percent on average and is a little narrower. Both keep width at the ends; the Wald interval is the one to retire. The engine and the bench use Wilson, and leader session 3 shows the same values; pick one method per team, write it in the evaluation plan, and never switch after seeing the data.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers Fisher's exact test, paired designs and trials per arm</span>
+      <h2>Comparing two policies: the test, the design, the price</h2>
+      <span class="tag concept">9 min live</span>
+    </div>
+    <p class="lede">Two intervals that overlap are a warning, not a test. Fisher's exact test asks the question directly for two independent counts. But the stronger move is in the design: run both policies from the same starts, interleaved, and the comparison stops paying for the variance between starts. Then you can say what a difference costs in trials before the afternoon begins.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn Wilson intervals on an axis from 40 to 100 percent. Policy A, 18 of 20, from 0.699 to 0.972 with its point at 0.9. Policy B, 15 of 20, from 0.531 to 0.888 with its point at 0.75. A marigold band marks the overlap from 0.699 to 0.888. Fisher's exact test gives p equal to 0.4075. Below, a two by two table of matched pairs: both succeed, A only, B only, both fail; the A only and B only cells are hachured as the only cells a paired test reads.">
+        <defs>
+          <filter id="wrnp7bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="73" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp7bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp7bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp7bH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp7bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp7bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp7bK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp7bA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp7bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp7bH" x="30" y="24">18 OF 20 AGAINST 15 OF 20, AXIS ZOOMED TO 40-100%</text>
+
+        <g filter="url(#wrnp7bSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M489 50 h214 v68 h-214 Z" transform="rotate(-0.4 596 84)" fill="#F4B63C"/>
+          <rect x="489" y="56" width="309" height="12" rx="4" fill="#FCEFF7"/>
+          <circle cx="717" cy="62" r="5" fill="#6B0546"/>
+          <rect x="298" y="100" width="405" height="12" rx="4" fill="#FCEFF7"/>
+          <circle cx="547" cy="106" r="5" fill="#6B0546"/>
+          <path d="M150 150 L830 150"/>
+          <path d="M150 150 L150 156 M263 150 L263 156 M377 150 L377 156 M490 150 L490 156 M603 150 L603 156 M717 150 L717 156 M830 150 L830 156"/>
+          <rect x="150" y="258" width="150" height="50" rx="4" transform="rotate(-0.5 225 283)" fill="#FFFFFF"/>
+          <rect x="300" y="258" width="150" height="50" rx="4" transform="rotate(0.4 375 283)" fill="url(#wrnp7bHc)"/>
+          <rect x="150" y="308" width="150" height="50" rx="4" transform="rotate(0.4 225 333)" fill="url(#wrnp7bHc)"/>
+          <rect x="300" y="308" width="150" height="50" rx="4" transform="rotate(-0.4 375 333)" fill="#FFFFFF"/>
+          <!-- doodle: a parcel -->
+          <rect x="800" y="262" width="34" height="24" rx="2" fill="#FFFFFF"/>
+          <path d="M800 272 L834 272 M817 262 L817 286" stroke="#B5338B"/>
+        </g>
+
+        <text class="wrnp7bL" x="30" y="66">A · 18 of 20</text>
+        <text class="wrnp7bL" x="30" y="110">B · 15 of 20</text>
+        <text class="wrnp7bS" x="489" y="44">0.699 to 0.972</text>
+        <text class="wrnp7bK" x="596" y="88" text-anchor="middle">overlap</text>
+        <text class="wrnp7bS" x="298" y="132">0.531 to 0.888</text>
+        <text class="wrnp7bA" x="150" y="172" text-anchor="middle">40%</text>
+        <text class="wrnp7bA" x="263" y="172" text-anchor="middle">50%</text>
+        <text class="wrnp7bA" x="377" y="172" text-anchor="middle">60%</text>
+        <text class="wrnp7bA" x="490" y="172" text-anchor="middle">70%</text>
+        <text class="wrnp7bA" x="603" y="172" text-anchor="middle">80%</text>
+        <text class="wrnp7bA" x="717" y="172" text-anchor="middle">90%</text>
+        <text class="wrnp7bA" x="830" y="172" text-anchor="middle">100%</text>
+        <text class="wrnp7bL" x="30" y="200">Fisher's exact test, two-sided: p = 0.4075. Independent counts cannot rank A and B.</text>
+
+        <text class="wrnp7bH" x="30" y="234">THE SAME FORTY TRIALS, RUN AS TWENTY MATCHED PAIRS</text>
+        <text class="wrnp7bS" x="225" y="252" text-anchor="middle">B succeeds</text>
+        <text class="wrnp7bS" x="375" y="252" text-anchor="middle">B fails</text>
+        <text class="wrnp7bS" x="140" y="287" text-anchor="end">A succeeds</text>
+        <text class="wrnp7bS" x="140" y="337" text-anchor="end">A fails</text>
+        <text class="wrnp7bL" x="225" y="287" text-anchor="middle">both succeed</text>
+        <text class="wrnp7bK" x="375" y="287" text-anchor="middle">A only</text>
+        <text class="wrnp7bK" x="225" y="337" text-anchor="middle">B only</text>
+        <text class="wrnp7bL" x="375" y="337" text-anchor="middle">both fail</text>
+        <text class="wrnp7bL" x="480" y="280">A paired test (McNemar's) reads only</text>
+        <text class="wrnp7bS" x="480" y="298">the two hachured cells: starts where</text>
+        <text class="wrnp7bS" x="480" y="314">the policies disagreed. Easy and hard</text>
+        <text class="wrnp7bS" x="480" y="330">starts land on the diagonal and drop out.</text>
+
+        <text class="wrnp7bN" x="30" y="386">Pair counts depend on your run, so none are drawn. Interval and p values from the engine on this page.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold overlap is why the independent test cannot decide; the hachured cells are where a matched design finds its evidence.</figcaption>
+    </figure>
+
+    <div class="wk" id="wrnp7-cmp">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">Type two results as successes and trials. The page computes both Wilson 95% intervals, Fisher's two-sided exact p, and the trials per arm at which these same two rates would first clear p below 0.05: it tries n = 2, 3, 4 and so on, rounds the expected counts at each n, and runs Fisher on them. The defaults, 18 of 20 against 15 of 20, are Wrenfield's constructed result; whatever you type, the arithmetic is real.</span>
+      </div>
+      <div class="wk-body">
+        <div class="wrnp7-grid">
+          <div>
+            <label class="sql-label" for="wrnp7-k1">Policy A successes</label>
+            <input class="sql-code" type="number" id="wrnp7-k1" min="0" max="1000" step="1" value="18">
+          </div>
+          <div>
+            <label class="sql-label" for="wrnp7-n1">Policy A trials</label>
+            <input class="sql-code" type="number" id="wrnp7-n1" min="1" max="1000" step="1" value="20">
+          </div>
+          <div>
+            <label class="sql-label" for="wrnp7-k2">Policy B successes</label>
+            <input class="sql-code" type="number" id="wrnp7-k2" min="0" max="1000" step="1" value="15">
+          </div>
+          <div>
+            <label class="sql-label" for="wrnp7-n2">Policy B trials</label>
+            <input class="sql-code" type="number" id="wrnp7-n2" min="1" max="1000" step="1" value="20">
+          </div>
+        </div>
+        <div id="wrnp7-out"></div>
+        <p class="sql-note" id="wrnp7-verdict">...</p>
+        <p class="sql-note" id="wrnp7-need">...</p>
+      </div>
+      <div class="wk-foot" id="wrnp7-self">...</div>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Reading Fisher's p at three splits<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Fisher's exact test fixes the total number of successes across both policies and asks: if the two were equally good, how likely is a split at least as uneven as this one? It is exact, so it stays honest at twenty trials where approximate chi-square tests do not.</p>
+        <ul>
+          <li><strong>18 of 20 against 15 of 20: p = 0.4075.</strong> A split this uneven turns up about two times in five between equal policies. No ranking.</li>
+          <li><strong>18 of 20 against 5 of 20: p = 0.00007.</strong> Twenty trials can separate policies; they just need a large gap to do it.</li>
+          <li><strong>13 of 20 against 14 of 20: p = 1.0.</strong> Kress-Gazit and colleagues (2024) use this pair to say "we cannot state that one policy outperforms the other". Type it into the widget.</li>
+        </ul>
+        <p>Leave the widget at its defaults and read the last line: at these same two rates, the first n per arm where the rounded expected counts clear 0.05 is 55. That is the size at which the expected result only just clears the line, so a real run of that size clears it roughly as often as not. Plan above it, or accept that the afternoon answers a smaller question.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The paired design: same starts, interleaved, blind, one session<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Kress-Gazit and colleagues (2024) recommend four practices for comparing policies, and each removes one way the room can impersonate the policy:</p>
+        <ul>
+          <li><strong>Match the initial conditions.</strong> Both policies start from the same recorded parcel poses and scene, reproduced with image overlays or floor markings. Hard starts and easy starts are now shared, not split unevenly by chance.</li>
+          <li><strong>Interleave the rollouts.</strong> A and B alternate through the session, so drift in light, battery or table wear lands on both.</li>
+          <li><strong>Keep the evaluator blind.</strong> The person judging success does not know which policy ran, and the person who designed the behaviour writes the success rule but does not apply it.</li>
+          <li><strong>Evaluate all policies in one session.</strong> A number from last month is a different world.</li>
+        </ul>
+        <p>Matching also changes the analysis. Each start now produces a pair of outcomes, and a paired test such as McNemar's test (standard) uses only the discordant pairs: starts where one policy succeeded and the other failed. Starts both policies pass, or both fail, say nothing about which is better and drop out. Fisher's test treats the two arms as independent samples and cannot use that structure. With matched starts, report both, and say which one your plan named in advance.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>One test, named before the afternoon<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>With forty trials it is easy to find some cut of the data that crosses 0.05: dim light only, left-edge parcels only, the first ten trials only. Each extra look is another draw. The defence is boring and effective: write the primary comparison, the test and n per arm in the plan before the first trial, and label everything else as exploratory. Per-condition breakdowns are still valuable; they are where failure modes show up. They are not where a ranking comes from.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers the bench at 20 and 200 trials, shift, and research trial counts</span>
+      <h2>What the bench shows when the truth is known</h2>
+      <span class="tag concept">3 min live</span>
+    </div>
+    <p class="lede">A real team never sees a policy's true rate. Wrenfield's bench (constructed, practitioner session 10) can, because it can run 2,000 constructed trials per rung. Score the same rungs at 20 trials and at 200, and you see what the interval has been warning about: at 20 the three best rungs look alike; at 200 they separate in the order the truth says.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 322" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn bars for rungs 2, 3 and 4 of the constructed Wrenfield bench, seed 1122, on a 50 to 100 percent scale. At 20 trials: 18, 19 and 20 of 20. At 200 trials: 147, 190 and 197 of 200. Marigold ticks mark the true rates from 2,000 constructed trials: 0.716, 0.908 and 0.951. At 20 trials the bars bunch near the top; at 200 they line up with the ticks.">
+        <defs>
+          <filter id="wrnp7cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="79" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp7cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp7cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp7cH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp7cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp7cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp7cA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp7cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp7cH" x="30" y="28">THE SAME THREE RUNGS, SEED 1122, SCORED AT 20 AND AT 200 REAL TRIALS</text>
+
+        <g filter="url(#wrnp7cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="46" width="410" height="216" rx="8" transform="rotate(-0.3 235 154)" fill="#FFFFFF"/>
+          <rect x="450" y="46" width="410" height="216" rx="8" transform="rotate(0.3 655 154)" fill="#FFFFFF"/>
+          <rect x="130" y="96" width="208" height="16" rx="3" fill="url(#wrnp7cHc)"/>
+          <rect x="130" y="146" width="234" height="16" rx="3" fill="url(#wrnp7cHc)"/>
+          <rect x="130" y="196" width="260" height="16" rx="3" fill="url(#wrnp7cHc)"/>
+          <path d="M239 92 h6 v24 h-6 Z" fill="#F4B63C"/>
+          <path d="M339 142 h6 v24 h-6 Z" fill="#F4B63C"/>
+          <path d="M361 192 h6 v24 h-6 Z" fill="#F4B63C"/>
+          <rect x="540" y="96" width="122" height="16" rx="3" fill="url(#wrnp7cHc)"/>
+          <rect x="540" y="146" width="234" height="16" rx="3" fill="url(#wrnp7cHc)"/>
+          <rect x="540" y="196" width="252" height="16" rx="3" fill="url(#wrnp7cHc)"/>
+          <path d="M649 92 h6 v24 h-6 Z" fill="#F4B63C"/>
+          <path d="M749 142 h6 v24 h-6 Z" fill="#F4B63C"/>
+          <path d="M771 192 h6 v24 h-6 Z" fill="#F4B63C"/>
+          <path d="M130 232 L390 232 M130 232 L130 237 M260 232 L260 237 M390 232 L390 237"/>
+          <path d="M540 232 L800 232 M540 232 L540 237 M670 232 L670 237 M800 232 L800 237"/>
+          <!-- doodle: a camera -->
+          <rect x="826" y="12" width="26" height="18" rx="3" fill="#FFFFFF"/>
+          <circle cx="839" cy="21" r="5" stroke="#B5338B"/>
+        </g>
+
+        <text class="wrnp7cL" x="46" y="72">20 trials per rung</text>
+        <text class="wrnp7cL" x="466" y="72">200 trials per rung</text>
+
+        <text class="wrnp7cL" x="46" y="104">Rung 2</text>
+        <text class="wrnp7cS" x="46" y="120">true 0.716</text>
+        <text class="wrnp7cL" x="46" y="154">Rung 3</text>
+        <text class="wrnp7cS" x="46" y="170">true 0.908</text>
+        <text class="wrnp7cL" x="46" y="204">Rung 4</text>
+        <text class="wrnp7cS" x="46" y="220">true 0.951</text>
+        <text class="wrnp7cS" x="346" y="108">18/20</text>
+        <text class="wrnp7cS" x="372" y="158">19/20</text>
+        <text class="wrnp7cS" x="398" y="208">20/20</text>
+
+        <text class="wrnp7cL" x="466" y="104">Rung 2</text>
+        <text class="wrnp7cS" x="466" y="120">true 0.716</text>
+        <text class="wrnp7cL" x="466" y="154">Rung 3</text>
+        <text class="wrnp7cS" x="466" y="170">true 0.908</text>
+        <text class="wrnp7cL" x="466" y="204">Rung 4</text>
+        <text class="wrnp7cS" x="466" y="220">true 0.951</text>
+        <text class="wrnp7cS" x="670" y="108">147/200</text>
+        <text class="wrnp7cS" x="782" y="158">190/200</text>
+        <text class="wrnp7cS" x="800" y="208">197/200</text>
+
+        <text class="wrnp7cA" x="130" y="252" text-anchor="middle">50%</text>
+        <text class="wrnp7cA" x="260" y="252" text-anchor="middle">75%</text>
+        <text class="wrnp7cA" x="390" y="252" text-anchor="middle">100%</text>
+        <text class="wrnp7cA" x="540" y="252" text-anchor="middle">50%</text>
+        <text class="wrnp7cA" x="670" y="252" text-anchor="middle">75%</text>
+        <text class="wrnp7cA" x="800" y="252" text-anchor="middle">100%</text>
+
+        <text class="wrnp7cN" x="30" y="288">Marigold tick: the true rate from 2,000 constructed trials, which only a constructed world can run.</text>
+        <text class="wrnp7cN" x="30" y="308">At 20 the bars bunch at the top; at 200 they line up with the ticks. Constructed Wrenfield bench.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - same policies, same seed: twenty trials put a 0.716 policy at 90 percent; two hundred put it at 147 of 200, next to its marigold tick.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>The 20-trial row, taken apart<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Run <code>PAI.ladder({nTrials: 20})</code> on the bench engine and rungs 2, 3 and 4 score 18, 19 and 20 of 20 (constructed, seed 1122). Their true rates are 0.716, 0.908 and 0.951. Put the three counts in the comparator above: every pair overlaps, and no pair clears 0.05. The evaluation did nothing wrong; it was simply too small to see a difference of 0.235 in true rate between rungs 2 and 4 (0.951 minus 0.716).</p>
+        <p>At 200 trials the same rungs score 147, 190 and 197 of 200, and the ordering matches the truth. And the size of the sample is not the only lever: at 50 trials with seed 7, rungs 1 and 2 tie at 34 each, although on the canon seed rung 2 is the better rung in truth (0.716 against 0.656). Change the seed and the tie can move. A small evaluation is one draw from a distribution of evaluations; the interval is the honest description of that distribution.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>13 of 20, then 0 of 8: shift is not chance<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Kress-Gazit and colleagues (2024) re-ran a policy on the same initial conditions after the lab was reorganized. Success went from 13 of 20 to 0 of 8. No interval width explains that; the world changed under the policy. This is why the plan records the scene, and why "one session" is a rule: an interval quantifies sampling noise inside one world and says nothing about a move to another. When a number collapses like this, the next question is not "how many more trials" but "what changed in the room".</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>How many trials published work actually runs<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Zhao, Kumar, Levine and Finn (2023) evaluated each real task of their two-arm system with 25 trials (one seed). Khazatsky and colleagues (2024), the DROID dataset team, ran 10 rollouts per task setting per method in their A/B policy comparisons. Both are reasonable for the cost of real trials, and both are sizes where a perfect 25 of 25 only bounds the true rate above 0.867, and a gap between two methods within one setting has to be very large to clear a test. Read such results as evidence summed across many settings and tasks, which is how those authors present them, not as a ranking from any one cell.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The Bayesian alternative: teach both<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Kress-Gazit and colleagues (2024) work their examples with Bayesian analysis, starting from a uniform prior over the success rate, and mention frequentist intervals as the alternative. With a uniform prior, k successes in n trials give a Beta(k + 1, n - k + 1) posterior for the rate. You can then ask the question a manager actually asks, "how likely is it that A's true rate exceeds B's?", by sampling both posteriors and counting.</p>
+        <p>The two schools answer slightly different questions. Wilson and Fisher say how surprising the data would be under a hypothesis; the posterior says how plausible each rate is given the data and the prior. At twenty trials they agree on the headline: a lot of uncertainty remains. Careful people use both, and the field has not settled on one. What matters is that the plan names the method before the trials run, and that the report shows the counts so a reader can redo it the other way.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ BUILD-ALONG ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>Wilson and Fisher in plain Python, then Wrenfield's evaluation plan</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Python 3.10 or later, standard library only: <code>math</code> for the statistics and <code>random</code> for the order. If scipy is installed you can cross-check Fisher against it, but nothing here needs it. You reproduce 0.699 to 0.972 and p = 0.4075, then write the plan for Wrenfield's afternoon. The figure is the schedule the plan produces: ten matched starts, both policies on each, the order shuffled per pair, the evaluator blind.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn evaluation schedule. Ten initial conditions, C01 to C10, as columns. Each column holds two runs, one for each policy, shown only by blind codes P-K and P-Q, in an order shuffled per pair: C01 P-K first, C02 P-Q first, C03 P-K first, C04 to C06 P-Q first, C07 P-K first, C08 to C10 P-Q first. Runs go column by column. A marigold box says the evaluator sees only the condition id and the code and judges by the written rule. A sealed codebook maps P-K to policy A and P-Q to policy B.">
+        <defs>
+          <filter id="wrnp7dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="83" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp7dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp7dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp7dH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp7dL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp7dS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp7dK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp7dW { font: 800 12px Inter, sans-serif; fill: #FFFFFF; }
+          .wrnp7dN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp7dH" x="30" y="28">PASS 1 OF 2: TEN MATCHED STARTS, BOTH POLICIES, ORDER SHUFFLED PER PAIR</text>
+
+        <g filter="url(#wrnp7dSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="135" y="72" width="60" height="34" rx="5" fill="#FFFFFF"/>
+          <rect x="135" y="112" width="60" height="34" rx="5" fill="#FCEFF7"/>
+          <rect x="203" y="72" width="60" height="34" rx="5" fill="#FCEFF7"/>
+          <rect x="203" y="112" width="60" height="34" rx="5" fill="#FFFFFF"/>
+          <rect x="271" y="72" width="60" height="34" rx="5" fill="#FFFFFF"/>
+          <rect x="271" y="112" width="60" height="34" rx="5" fill="#FCEFF7"/>
+          <rect x="339" y="72" width="60" height="34" rx="5" fill="#FCEFF7"/>
+          <rect x="339" y="112" width="60" height="34" rx="5" fill="#FFFFFF"/>
+          <rect x="407" y="72" width="60" height="34" rx="5" fill="#FCEFF7"/>
+          <rect x="407" y="112" width="60" height="34" rx="5" fill="#FFFFFF"/>
+          <rect x="475" y="72" width="60" height="34" rx="5" fill="#FCEFF7"/>
+          <rect x="475" y="112" width="60" height="34" rx="5" fill="#FFFFFF"/>
+          <rect x="543" y="72" width="60" height="34" rx="5" fill="#FFFFFF"/>
+          <rect x="543" y="112" width="60" height="34" rx="5" fill="#FCEFF7"/>
+          <rect x="611" y="72" width="60" height="34" rx="5" fill="#FCEFF7"/>
+          <rect x="611" y="112" width="60" height="34" rx="5" fill="#FFFFFF"/>
+          <rect x="679" y="72" width="60" height="34" rx="5" fill="#FCEFF7"/>
+          <rect x="679" y="112" width="60" height="34" rx="5" fill="#FFFFFF"/>
+          <rect x="747" y="72" width="60" height="34" rx="5" fill="#FCEFF7"/>
+          <rect x="747" y="112" width="60" height="34" rx="5" fill="#FFFFFF"/>
+          <path d="M135 162 L805 162" marker-end="url(#wrnp7dAr)"/>
+          <rect x="30" y="200" width="400" height="74" rx="8" transform="rotate(-0.4 230 237)" fill="#F4B63C"/>
+          <rect x="460" y="200" width="390" height="74" rx="8" transform="rotate(0.4 655 237)" fill="#6B0546"/>
+          <!-- doodle: a clipboard -->
+          <rect x="390" y="212" width="24" height="32" rx="3" fill="#FFFFFF"/>
+          <path d="M396 212 L396 207 L408 207 L408 212 M395 224 L409 224 M395 232 L405 232"/>
+        </g>
+
+        <text class="wrnp7dS" x="165" y="62" text-anchor="middle">C01</text>
+        <text class="wrnp7dS" x="233" y="62" text-anchor="middle">C02</text>
+        <text class="wrnp7dS" x="301" y="62" text-anchor="middle">C03</text>
+        <text class="wrnp7dS" x="369" y="62" text-anchor="middle">C04</text>
+        <text class="wrnp7dS" x="437" y="62" text-anchor="middle">C05</text>
+        <text class="wrnp7dS" x="505" y="62" text-anchor="middle">C06</text>
+        <text class="wrnp7dS" x="573" y="62" text-anchor="middle">C07</text>
+        <text class="wrnp7dS" x="641" y="62" text-anchor="middle">C08</text>
+        <text class="wrnp7dS" x="709" y="62" text-anchor="middle">C09</text>
+        <text class="wrnp7dS" x="777" y="62" text-anchor="middle">C10</text>
+
+        <text class="wrnp7dL" x="30" y="93">1st run</text>
+        <text class="wrnp7dL" x="30" y="133">2nd run</text>
+
+        <text class="wrnp7dL" x="165" y="93" text-anchor="middle">P-K</text>
+        <text class="wrnp7dL" x="165" y="133" text-anchor="middle">P-Q</text>
+        <text class="wrnp7dL" x="233" y="93" text-anchor="middle">P-Q</text>
+        <text class="wrnp7dL" x="233" y="133" text-anchor="middle">P-K</text>
+        <text class="wrnp7dL" x="301" y="93" text-anchor="middle">P-K</text>
+        <text class="wrnp7dL" x="301" y="133" text-anchor="middle">P-Q</text>
+        <text class="wrnp7dL" x="369" y="93" text-anchor="middle">P-Q</text>
+        <text class="wrnp7dL" x="369" y="133" text-anchor="middle">P-K</text>
+        <text class="wrnp7dL" x="437" y="93" text-anchor="middle">P-Q</text>
+        <text class="wrnp7dL" x="437" y="133" text-anchor="middle">P-K</text>
+        <text class="wrnp7dL" x="505" y="93" text-anchor="middle">P-Q</text>
+        <text class="wrnp7dL" x="505" y="133" text-anchor="middle">P-K</text>
+        <text class="wrnp7dL" x="573" y="93" text-anchor="middle">P-K</text>
+        <text class="wrnp7dL" x="573" y="133" text-anchor="middle">P-Q</text>
+        <text class="wrnp7dL" x="641" y="93" text-anchor="middle">P-Q</text>
+        <text class="wrnp7dL" x="641" y="133" text-anchor="middle">P-K</text>
+        <text class="wrnp7dL" x="709" y="93" text-anchor="middle">P-Q</text>
+        <text class="wrnp7dL" x="709" y="133" text-anchor="middle">P-K</text>
+        <text class="wrnp7dL" x="777" y="93" text-anchor="middle">P-Q</text>
+        <text class="wrnp7dL" x="777" y="133" text-anchor="middle">P-K</text>
+
+        <text class="wrnp7dS" x="135" y="182">run order: down each column, then the next; C01 first</text>
+
+        <text class="wrnp7dL" x="46" y="226">The evaluator sees</text>
+        <text class="wrnp7dK" x="46" y="246">the condition id and the code only,</text>
+        <text class="wrnp7dK" x="46" y="264">and judges by the written success rule</text>
+        <text class="wrnp7dW" x="476" y="228">Sealed codebook, opened after scoring</text>
+        <text class="wrnp7dW" x="476" y="254">P-K = policy A · P-Q = policy B</text>
+
+        <text class="wrnp7dN" x="30" y="304">Pass 2 repeats C01 to C10 with a fresh shuffle: 20 trials per arm. Order from plan.py, seed 7, constructed.</text>
+        <text class="wrnp7dN" x="30" y="324">One session, same day: a change in the room lands on both policies, not on one.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold box is the point of the design: the person deciding success cannot know which policy they are judging.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Write the Wilson interval</h4>
+        <p>Make a scratch folder and create <code>evalplan.py</code>. The function is the formula from Part 1, line for line. Clamp to 0 and 1 so rounding never prints a negative lower bound.</p>
+        <div class="prompt-box good"><span class="label">evalplan.py, part 1</span>import math
+import random
+
+Z = 1.959963984540054  # two-sided 95%
+
+
+def wilson(k, n, z=Z):
+    p = k / n
+    den = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / den
+    half = (z / den) * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+    return max(0.0, centre - half), min(1.0, centre + half)</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Write Fisher's exact test, two-sided</h4>
+        <p>Fix the row and column totals, compute the probability of every possible split with <code>math.comb</code>, and add up the splits no more likely than the one observed. The small tolerance stops floating-point noise from dropping a table that ties the observed one.</p>
+        <div class="prompt-box good"><span class="label">evalplan.py, part 2</span>def fisher_two_sided(a, n1, b, n2):
+    K, N = a + b, n1 + n2
+    def prob(x):
+        return math.comb(n1, x) * math.comb(n2, K - x) / math.comb(N, K)
+    observed = prob(a)
+    lo, hi = max(0, K - n2), min(K, n1)
+    return min(1.0, sum(prob(x) for x in range(lo, hi + 1)
+                        if prob(x) &lt;= observed * (1 + 1e-7)))</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Reproduce the numbers and read the output</h4>
+        <p>Print Wrenfield's two intervals and both Fisher comparisons, then run <code>python3 evalplan.py</code>. The output below was produced by running exactly this file with Python 3.11 when this page was written.</p>
+        <div class="prompt-box good"><span class="label">evalplan.py, part 3</span>lo, hi = wilson(18, 20)
+print(f"Wilson 18/20: {lo:.3f} to {hi:.3f}")
+lo, hi = wilson(15, 20)
+print(f"Wilson 15/20: {lo:.3f} to {hi:.3f}")
+print(f"Fisher 18/20 vs 15/20: p = {fisher_two_sided(18, 20, 15, 20):.4f}")
+print(f"Fisher 13/20 vs 14/20: p = {fisher_two_sided(13, 20, 14, 20):.4f}")</div>
+        <div class="prompt-box good"><span class="label">Expected output</span>Wilson 18/20: 0.699 to 0.972
+Wilson 15/20: 0.531 to 0.888
+Fisher 18/20 vs 15/20: p = 0.4075
+Fisher 13/20 vs 14/20: p = 1.0000</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Optional: cross-check against scipy</h4>
+        <p>If scipy is installed, its <code>fisher_exact</code> takes the 2 x 2 table of successes and failures. Two independent implementations agreeing is the cheapest test you will ever write.</p>
+        <div class="prompt-box good"><span class="label">check_scipy.py (needs scipy)</span>from scipy.stats import fisher_exact
+_, p = fisher_exact([[18, 2], [15, 5]], alternative="two-sided")
+print(f"scipy Fisher 18/20 vs 15/20: p = {p:.4f}")</div>
+        <div class="prompt-box good"><span class="label">Expected output</span>scipy Fisher 18/20 vs 15/20: p = 0.4075</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Write the evaluation plan as code</h4>
+        <p>Create <code>plan.py</code>. The plan is data before it is a document: ten initial conditions crossing parcel position, rotation, distractors and light; one success rule with a time limit and "no human touch"; two passes so each arm gets 20 trials; a fixed seed so the shuffled order can be reproduced and audited; and blind codes for the evaluator. The conditions and codes are Wrenfield's constructed choices.</p>
+        <div class="prompt-box good"><span class="label">plan.py</span>import random
+
+rng = random.Random(7)  # constructed Wrenfield plan; fixed seed so the order is reproducible
+
+conditions = [
+    ("C01", "parcel centre, normal light"), ("C02", "parcel centre, dim light"),
+    ("C03", "parcel left edge, normal light"), ("C04", "parcel left edge, dim light"),
+    ("C05", "parcel right edge, normal light"), ("C06", "parcel right edge, dim light"),
+    ("C07", "parcel rotated 45 degrees, normal"), ("C08", "parcel rotated 45 degrees, dim"),
+    ("C09", "two distractor parcels, normal"), ("C10", "two distractor parcels, dim"),
+]
+success_rule = "parcel in tote, tote upright, within 30 s, no human touch"
+reps = 2  # each condition twice per policy: 20 trials per arm
+
+codes = {"A": "P-K", "B": "P-Q"}  # the evaluator sees only these codes
+schedule = []
+for rep in range(reps):
+    for cid, _ in conditions:
+        pair = ["A", "B"]
+        rng.shuffle(pair)           # which policy goes first is random per pair
+        schedule += [(cid, p) for p in pair]
+
+print("success rule:", success_rule)
+print("trials per arm:", sum(1 for _, p in schedule if p == "A"))
+for i, (cid, p) in enumerate(schedule[:6], start=1):
+    print(f"{i:02d} {cid} {codes[p]}")</div>
+        <div class="prompt-box good"><span class="label">Expected output</span>success rule: parcel in tote, tote upright, within 30 s, no human touch
+trials per arm: 20
+01 C01 P-K
+02 C01 P-Q
+03 C02 P-Q
+04 C02 P-K
+05 C03 P-K
+06 C03 P-Q</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Extend it: decide n per arm honestly</h4>
+        <p>The plan above gives 20 per arm because that is what one afternoon buys. Put Wrenfield's expected rates into the comparator in Part 2 and write the result into the plan as a sentence: "At 20 per arm this evaluation can detect only a large gap; a 15-point gap would need more than twice the trials per arm." Then add a column for the paired outcome per start, so the discordant pairs can be counted after the session. Run it and read your output: your conditions and order will differ if you change the seed.</p>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> Write the plan, the test and n per arm before the first trial, and keep the seed. An evaluation whose order, rule and analysis can be replayed by someone else is worth more than one with ten extra trials and no record.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">A policy scores 20 of 20. What does the Wald interval report, and what is wrong with it?</p>
+      <button class="qopt" type="button">A · 0.839 to 1, which is too wide for a perfect score</button>
+      <button class="qopt" type="button">B · 0.9 to 1, a sensible rule of thumb</button>
+      <button class="qopt" type="button">C · 1 to 1: the observed rate is 1, so the standard error is 0 and the interval has no width, claiming certainty from twenty trials</button>
+      <p class="qwhy">The Wald interval computes its width from the observed rate, which is 1. Wilson keeps a width set by n: 0.839 to 1 at 20 of 20.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">Wrenfield's new policy A scores 18 of 20 and the current policy B scores 15 of 20. What should the report say?</p>
+      <button class="qopt" type="button">A · The intervals (0.699 to 0.972 and 0.531 to 0.888) overlap heavily and Fisher's p = 0.4075, so these trials cannot rank A and B; state the n per arm a real comparison would need</button>
+      <button class="qopt" type="button">B · A is 15 points better and should replace B</button>
+      <button class="qopt" type="button">C · B is better, because its interval is wider</button>
+      <p class="qwhy">A split this uneven appears about two times in five between equally good policies. The honest report gives both intervals, the test, and the cost of a decisive answer.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">Why run both policies from the same initial conditions, interleaved, in one session?</p>
+      <button class="qopt" type="button">A · Because it doubles the number of trials for free</button>
+      <button class="qopt" type="button">B · So that hard and easy starts, and drift in the room, land on both policies alike; the comparison then pays only for the policies' difference, and a paired test can use the starts where they disagree</button>
+      <button class="qopt" type="button">C · Because Fisher's exact test requires it</button>
+      <p class="qwhy">Matching removes condition variance from the comparison. Fisher's test treats the arms as independent and does not need matching; a paired test such as McNemar's uses it.</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">Before session 8</span>
+      <h2>Homework</h2>
+    </div>
+    <ol>
+      <li>Add a third function to <code>evalplan.py</code> that returns the Wald interval, and print Wald and Wilson side by side for 0, 10, 19 and 20 of 20. Where do they disagree most?</li>
+      <li>Extend <code>plan.py</code> to write the full 40-row schedule to a CSV with empty columns for outcome, evaluator initials and notes. That file is the evaluation's record.</li>
+      <li>Take one published robot result you know and write down its trials per condition, its success rule and its analysis. Which of the four does it leave out?</li>
+      <li>With a uniform prior, sample 10,000 draws from Beta(19, 3) and Beta(16, 6) with numpy and count how often the first exceeds the second. Compare the sentence you would write with the Fisher sentence. Practitioner session 8 turns the failures you just counted into labels.</li>
+    </ol>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Wilson score interval</span><span class="note">Wilson (1927), "Probable Inference, the Law of Succession, and Statistical Inference", JASA 22: 209-212. Reported; the formula is standard and implemented in the engine and the build-along.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Fisher's exact test, McNemar's paired test</span><span class="note">Standard methods. The engine matches scipy; the build-along output was run and copied.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Evaluation practice</span><span class="note">Kress-Gazit et al. (2024), arXiv 2409.09491: matched starts, interleaving, blind evaluation, one session, 13/20 vs 14/20, 13/20 to 0/8, uniform-prior Bayesian examples. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Research trial counts</span><span class="note">Zhao, Kumar, Levine and Finn (2023), arXiv 2304.13705: 25 real trials per task. Khazatsky et al. (2024), DROID, arXiv 2403.12945: 10 rollouts per setting per method. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The bench at 20 and 200 trials</span><span class="note">Constructed Wrenfield engine, seed 1122: 18, 19, 20 of 20 and 147, 190, 197 of 200 against true 0.716, 0.908, 0.951.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">What a success rate can and cannot tell you</span><span class="note">The decision-maker's view of the same numbers: <a href="a3-what-a-success-rate-can-and-cannot-tell-you.html">leader session 3</a>.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Evaluating language models</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-ai-evals-with-phoebe/">learn AI evals</a>.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Rare events over millions of miles</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-autonomous-driving-with-phoebe/">learn autonomous driving</a>.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>Retire Wald.</strong> At 0 of n and n of n it has zero width. Wilson does not: 20 of 20 is 0.839 to 1.</div>
+      <div class="cheat-item"><strong>The 20-trial pair.</strong> 18 of 20 is 0.699 to 0.972; 15 of 20 is 0.531 to 0.888.</div>
+      <div class="cheat-item"><strong>Fisher for two counts.</strong> 18/20 vs 15/20: p = 0.4075. 18/20 vs 5/20: p = 0.00007.</div>
+      <div class="cheat-item"><strong>Pair the starts.</strong> Same initial conditions, interleaved, blind, one session; a paired test reads the discordant pairs.</div>
+      <div class="cheat-item"><strong>Price it first.</strong> At 0.9 against 0.75, the rounded expected counts first clear 0.05 at 55 per arm.</div>
+      <div class="cheat-item"><strong>Twenty trials flatten truth.</strong> Bench (constructed): 18, 19, 20 of 20 for true 0.716, 0.908, 0.951.</div>
+      <div class="cheat-item"><strong>Shift is not noise.</strong> 13 of 20 became 0 of 8 after a lab reorganization; ask what changed in the room.</div>
+      <div class="cheat-item"><strong>Name it in advance.</strong> Plan, rule, test and n per arm before the first trial; keep the seed.</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>The intervention log as labels.</strong> Every time a person takes over during a rollout, the robot has been told where it went wrong. How to turn takeovers into training labels, and the selection bias that comes with them.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Practitioner session 7 of 10 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="p6-domain-randomization.html">← Prev: Domain randomization</a>
+        <a href="p8-the-intervention-log-as-labels.html">Next: The intervention log as labels →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/pai-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  if (typeof PAI === "undefined") return;
+  var ids = ["wrnp7-k1", "wrnp7-n1", "wrnp7-k2", "wrnp7-n2"];
+  var els = ids.map(function (id) { return document.getElementById(id); });
+  var out = document.getElementById("wrnp7-out");
+  var verdict = document.getElementById("wrnp7-verdict");
+  var need = document.getElementById("wrnp7-need");
+  var self = document.getElementById("wrnp7-self");
+  if (!out || els.some(function (e) { return !e; })) return;
+  function pct(x) { return (100 * x).toFixed(1) + "%"; }
+  function pfmt(p) { return p < 0.0001 ? "below 0.0001" : p.toFixed(4); }
+  function whole(v) { return v !== "" && isFinite(Number(v)) && Math.floor(Number(v)) === Number(v); }
+  // First n per arm at which the rounded expected counts at these two rates give Fisher p below 0.05.
+  function trialsNeeded(r1, r2) {
+    for (var n = 2; n <= 2000; n++) {
+      var a = Math.round(r1 * n), b = Math.round(r2 * n);
+      if (a === b) continue;
+      var p = PAI.fisher(a, n, b, n);
+      if (p < 0.05) return { n: n, a: a, b: b, p: p };
+    }
+    return null;
+  }
+  function bad() {
+    out.innerHTML = ""; need.textContent = "";
+    verdict.textContent = "Enter whole numbers: successes from 0 up to the trials, trials from 1 to 1000.";
+  }
+  function render() {
+    var v = els.map(function (e) { return e.value.trim(); });
+    if (!v.every(whole)) { bad(); return; }
+    var k1 = Number(v[0]), n1 = Number(v[1]), k2 = Number(v[2]), n2 = Number(v[3]);
+    if (n1 < 1 || n2 < 1 || n1 > 1000 || n2 > 1000 || k1 < 0 || k2 < 0 || k1 > n1 || k2 > n2) { bad(); return; }
+    var w1 = PAI.wilson(k1, n1), w2 = PAI.wilson(k2, n2);
+    var p = PAI.fisher(k1, n1, k2, n2);
+    var overlap = Math.min(w1.hi, w2.hi) - Math.max(w1.lo, w2.lo);
+    out.innerHTML = '<table class="sql-table"><thead><tr><th>Policy</th><th>k of n</th><th>Rate</th><th>Wilson 95% interval</th></tr></thead><tbody>' +
+      "<tr><td>A</td><td><b>" + k1 + " / " + n1 + "</b></td><td>" + pct(k1 / n1) + "</td><td>" + w1.lo.toFixed(3) + " to " + w1.hi.toFixed(3) + "</td></tr>" +
+      "<tr><td>B</td><td><b>" + k2 + " / " + n2 + "</b></td><td>" + pct(k2 / n2) + "</td><td>" + w2.lo.toFixed(3) + " to " + w2.hi.toFixed(3) + "</td></tr>" +
+      '<tr><td colspan="3">Overlap of the two intervals</td><td>' + (overlap > 0 ? Math.max(w1.lo, w2.lo).toFixed(3) + " to " + Math.min(w1.hi, w2.hi).toFixed(3) : "none") + "</td></tr>" +
+      '<tr><td colspan="3">Fisher\'s exact test, two-sided</td><td><b>p = ' + pfmt(p) + "</b></td></tr></tbody></table>";
+    verdict.textContent = p >= 0.05
+      ? "Cannot rank: p = " + pfmt(p) + ". A split at least this uneven is common between equally good policies. Report both intervals; do not pick a winner on the point rates."
+      : "Unlikely to be chance alone: p = " + pfmt(p) + ". That reading holds only if the trials were matched, interleaved, judged blind by a written rule, and this was the comparison the plan named in advance.";
+    var r1 = k1 / n1, r2 = k2 / n2;
+    if (r1 === r2) {
+      need.textContent = "Trials per arm needed: the two observed rates are equal, so no number of trials at these rates separates them.";
+    } else {
+      var t = trialsNeeded(r1, r2);
+      need.textContent = t
+        ? "Trials per arm needed at these rates (" + r1.toFixed(2) + " and " + r2.toFixed(2) + "): about " + t.n + ". At " + t.n + " per arm the rounded expected counts, " + t.a + " of " + t.n + " against " + t.b + " of " + t.n + ", give p = " + pfmt(t.p) + ". This is where the expected result only just clears 0.05; a real run of that size clears it roughly as often as not."
+        : "Trials per arm needed at these rates: more than 2,000. A gap this small is not something a robot evaluation can resolve by adding trials.";
+    }
+  }
+  els.forEach(function (e) { e.addEventListener("input", render); });
+  render();
+  var st = PAI.selfTestResult || PAI.selfTest();
+  self.textContent = st.pass
+    ? "Defaults are a constructed Wrenfield result; your numbers will differ when you type your own. Real arithmetic: Wilson interval and Fisher's exact test from the bench engine, whose " + st.checks.length + " self-checks pass in this browser."
+    : "The engine's self-check did not pass in this browser, so nothing above should be believed.";
+})();
+</script>
+<style>
+  #wrnp7-cmp .wrnp7-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .6rem 1rem; margin-bottom: .6rem; }
+  #wrnp7-cmp .sql-code { border: 1px solid var(--hairline); border-radius: 8px; width: 100%; max-width: 12rem; }
+  #wrnp7-cmp table.sql-table { margin: .6rem 0 .2rem; font-size: .85rem; }
+</style>
+</body>
+</html>

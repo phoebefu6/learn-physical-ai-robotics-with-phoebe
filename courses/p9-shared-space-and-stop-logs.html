@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Practitioner session 9 of 10. Shared space and stop logs: why the cost of being wrong changes when people share the cell, what a protective stop record must hold, and why the denominator of a stop rate decides which cell looks safer. Build a constructed Wrenfield weekly stop report in pandas.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="Shared space and stop logs - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Practitioner session 9 of 10. Every protective stop is a logged event with a cause. Divide the same stops three ways and two cells swap places.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/p9-shared-space-and-stop-logs.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Shared space and stop logs - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="Stops as data: the record, the cause, and the denominator that decides which cell looks safer.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Practitioner session 9 · Shared space and stop logs - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Practitioner session 9 of 10</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Practitioner session 9 of 10</div>
+    <h1>Shared space and <span class="accent">stop logs</span></h1>
+    <p class="sub">When people work in the same cell as the arm, a failure is no longer only a dropped parcel. The robot's safety layer stops or limits the arm, and every one of those stops lands in a log with a time and a cause. Tonight you treat that log as a dataset: what a stop record must contain, which denominator turns a count into a rate that means something, and why a policy that succeeds more is not better by default if it stops more near people. Wrenfield Lab, its two cells and its stop log are constructed; the standards are cited as reported, and nothing here is legal or compliance advice.</p>
+    <div class="chip-row">
+      <span class="chip level">🟠 Advanced</span>
+      <span class="chip audience">Data engineers who own robot run logs</span>
+      <span class="chip audience">ML engineers asked to sign off a policy near people</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:3">3-12 · Near people</span>
+      <span class="a3" style="flex:4">12-23 · Stop logs and evaluation</span>
+      <span class="a4" style="flex:7">23-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Wrenfield opens the cell to the packing team</h2>
+    </div>
+    <p class="lede">Wrenfield Lab (constructed) has moved its two-arm picker out of the fenced test bench and into a cell where people restock totes and clear jams by hand. In the first week the arm stopped 40 times. The operations lead asks the data team one question: is that a lot? Tonight is about why that question has no answer until you say "per what", and what the log has to record before anyone can answer it honestly.</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> A drawing of a shared cell from above: the arm's reach, the zone where its speed and force are limited, a person's path through it, and the three places a protective stop fires. The fields a stop record needs before it is data rather than an alarm. Three denominators, and a constructed pair of cells that swap places depending on which one you choose. A frontier of success rate against stops near people that refuses to name a winner. And a pandas script that turns a constructed stop log into the header of a weekly stop report.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why "40 stops" is not yet a fact<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A count of stops mixes three things: how risky the policy is, how much work the robot did, and how often people came close. Double the picks and the count roughly doubles with a perfectly unchanged policy. Halve the restocking visits and the count of zone-entry stops drops with the same policy again. A stop count is a numerator waiting for an exposure, and choosing the exposure is a decision about which question you are answering.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>Kress-Gazit et al. (2024), writing on how robot learning should report evaluations, found that papers usually report a success rate with little on the number of runs, the initial conditions, the success criteria or the statistics, and recommended reporting conditions, complementary metrics and qualitative failure modes alongside it. Stop logs are the complementary metric that matters most once people share the space, and they have the same reporting problem: a number with no conditions and no denominator.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Words for tonight<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Protective stop.</strong> The safety layer halts the arm because a monitored condition was met. It is an event in the log with a time and a cause.</li>
+          <li><strong>Force-limit trip.</strong> A protective stop because measured contact force passed the configured limit.</li>
+          <li><strong>Zone entry.</strong> A stop or slow-down because a person was detected inside a monitored zone.</li>
+          <li><strong>Operator e-stop.</strong> A person pressed the emergency stop. A human judgement, like a takeover in practitioner session 8.</li>
+          <li><strong>Exposure.</strong> The denominator: hours of shared operation, picks, or person entries into the cell.</li>
+          <li><strong>Near-miss.</strong> A situation that came close to a stop or a contact and did not trigger one. Not logged unless someone decides to log it.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the cost asymmetry and the safety layer</span>
+      <h2>Near people, being wrong costs something different</h2>
+      <span class="tag concept">9 min live</span>
+    </div>
+    <p class="lede">On the fenced bench, a wrong action costs a missed grasp: one failed trial, a reset, a line in the evaluation. In a shared cell the same wrong action can move the arm toward a person. The two errors are not on the same scale, so they cannot share one metric. The policy is judged on success; the cell is judged on stops, and the safety layer that produces those stops sits underneath the policy, not inside it.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn plan view of a constructed Wrenfield cell. The robot base sits at the centre with its arm reaching toward a tote. A tint circle marks the arm's reach zone. A larger marigold circle around it marks the zone where speed and force are limited when a person is inside. A dashed person's path enters from the top right, crosses into the limited zone, touches the edge of the reach zone and leaves at the bottom right. Three numbered stop points: 1 zone entry where the path crosses the marigold boundary, 2 contact force limit at the reach edge, 3 operator e-stop at a post outside the zone.">
+        <defs>
+          <filter id="wrnp9aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="41" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp9aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp9aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp9aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp9aK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9aW { font: 800 12px Inter, sans-serif; fill: #FFFFFF; }
+          .wrnp9aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp9aH" x="30" y="30">A SHARED CELL FROM ABOVE (CONSTRUCTED WRENFIELD CELL A)</text>
+
+        <g filter="url(#wrnp9aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="290" cy="225" r="165" fill="#F4B63C"/>
+          <circle cx="290" cy="225" r="105" fill="#FCEFF7"/>
+          <!-- doodle: the tote with a parcel -->
+          <rect x="196" y="208" width="44" height="32" rx="3" transform="rotate(-0.8 218 224)" fill="#FFFFFF"/>
+          <path d="M206 214 L230 214 L230 232 L206 232 Z M206 214 L218 222 L230 214"/>
+          <!-- the arm -->
+          <path d="M290 225 L332 188 L360 204" stroke-width="4"/>
+          <path d="M356 198 L366 196 M358 210 L368 212"/>
+          <circle cx="290" cy="225" r="15" fill="#9B0865"/>
+          <!-- the person's path -->
+          <path d="M640 70 Q520 92 444 150 L398 212 Q398 290 470 330 L620 372" stroke-dasharray="7 6" marker-end="url(#wrnp9aAr)"/>
+          <!-- the e-stop post -->
+          <rect x="556" y="232" width="22" height="22" rx="4" transform="rotate(0.7 567 243)" fill="#FFFFFF"/>
+          <!-- stop points -->
+          <circle cx="444" cy="150" r="7" fill="#6B0546"/>
+          <circle cx="398" cy="212" r="7" fill="#6B0546"/>
+          <circle cx="567" cy="243" r="7" fill="#6B0546"/>
+          <!-- legend panel -->
+          <rect x="640" y="130" width="220" height="196" rx="8" transform="rotate(-0.4 750 228)" fill="#FFFFFF"/>
+        </g>
+
+        <text class="wrnp9aK" x="290" y="82" text-anchor="middle">speed and force limited</text>
+        <text class="wrnp9aK" x="290" y="98" text-anchor="middle">when a person is inside</text>
+        <text class="wrnp9aL" x="290" y="150" text-anchor="middle">reach zone</text>
+        <text class="wrnp9aS" x="218" y="262" text-anchor="middle">tote</text>
+        <text class="wrnp9aS" x="290" y="290" text-anchor="middle">robot base</text>
+        <text class="wrnp9aL" x="434" y="146" text-anchor="end">1</text>
+        <text class="wrnp9aL" x="384" y="240" text-anchor="end">2</text>
+        <text class="wrnp9aL" x="586" y="238">3</text>
+        <text class="wrnp9aS" x="560" y="58" text-anchor="end">a person restocking</text>
+        <text class="wrnp9aS" x="567" y="272" text-anchor="middle">e-stop post</text>
+
+        <text class="wrnp9aH" x="654" y="154">Where stops fire</text>
+        <text class="wrnp9aL" x="654" y="180">1 Zone entry</text>
+        <text class="wrnp9aS" x="654" y="196">a person crosses the boundary</text>
+        <text class="wrnp9aL" x="654" y="224">2 Contact force limit</text>
+        <text class="wrnp9aS" x="654" y="240">measured force passes the limit</text>
+        <text class="wrnp9aL" x="654" y="268">3 Operator e-stop</text>
+        <text class="wrnp9aS" x="654" y="284">a person decides to stop it</text>
+        <text class="wrnp9aS" x="654" y="310">each one: a logged event</text>
+
+        <text class="wrnp9aN" x="30" y="406">Constructed layout, not a safety design. The marigold zone is where the arm's behaviour depends on a person.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - three causes, three places: a stop log without its cause column cannot tell a crossing from a contact from a human judgement.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What the standards say, as reported<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Nothing on this page is legal or compliance advice. Whether a cell is safe is decided by a risk assessment against the standards, done by qualified people; a data team does not certify anything. What a data team needs is to know the shape of the rules, because the rules decide what gets logged.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>ISO/TS 15066:2016 (reported; the standard is paywalled and was not read at source) describes power and force limiting as one of four collaborative operation modes, and its Annex A tabulates maximum contact force and pressure per body region, set from pain-onset thresholds and described as preliminary. Behrens et al. (2022), in Frontiers in Robotics and AI (reported), ran a study with 112 subjects toward replacing those values and found that pain thresholds differ between men and women in some body regions. ISO 10218-1 and -2 were revised in 2025 (reported), consolidating the collaborative content into Part 1. No per-region value is quoted here, deliberately.</p>
+        </div>
+        <p>The data consequence: the limit that trips a contact stop is a configured number, and the science behind it is still moving. A force-limit trip count is only comparable across weeks if the limit was the same in both weeks. So the configured limit, or its version, belongs in the stop record.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The safety layer sits under the policy<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The learned policy proposes actions; the safety layer can veto, slow or stop them, whatever the policy wanted. That separation is why stops are such clean data: they are written by a component the policy cannot talk its way past. It also means a stop says "the safety layer intervened", not "the policy was about to hurt someone". A zone-entry stop fires the same way whether the arm was heading toward the person or away. Read stops as exposure to risk, not as a count of averted accidents.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Asymmetric costs, in data terms<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>When two kinds of error have very different costs, averaging them into one score hides the expensive one. Keep two ledgers: task outcomes (success, failure, intervention) and safety events (stops by cause). Report them side by side, never as a single blended number. The same reasoning appears in any domain with a rare, costly error; the statistics of very rare events over very long exposure are taught in <a href="https://phoebefu6.github.io/learn-autonomous-driving-with-phoebe/">learn autonomous driving</a>.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers the stop record and its denominators</span>
+      <h2>A stop log is a dataset with three denominators</h2>
+      <span class="tag concept">8 min live</span>
+    </div>
+    <p class="lede">A protective stop record is a row with a time, a cause, the robot's state at the moment, the policy version that was running, the configured limit, and whether a person was present. With those fields the log can answer questions. Without a denominator it still cannot answer "is that a lot". Wrenfield's two cells, both constructed, show why the choice of denominator is the choice of question.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn paired bars for two constructed Wrenfield cells. Cell A has 40 stops, Cell B 30. Per shared hour: A 0.80, B 1.00, A lower. Per 1,000 picks: A 6.67, B 12.00, A lower. Per 100 person entries: A 13.33, B 5.00, B lower; this row is marked as the one where the ranking flips.">
+        <defs>
+          <filter id="wrnp9bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="43" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp9bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp9bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp9bH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp9bK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9bV { font: 800 16px Inter, sans-serif; fill: #6B0546; }
+          .wrnp9bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp9bH" x="30" y="30">THE SAME STOPS, DIVIDED THREE WAYS · CELL A 40 STOPS · CELL B 30 STOPS (CONSTRUCTED)</text>
+
+        <g filter="url(#wrnp9bSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="260" y="54" width="320" height="22" rx="4" fill="url(#wrnp9bHc)"/>
+          <rect x="260" y="82" width="400" height="22" rx="4" fill="#FFFFFF"/>
+          <rect x="260" y="134" width="222" height="22" rx="4" fill="url(#wrnp9bHc)"/>
+          <rect x="260" y="162" width="400" height="22" rx="4" fill="#FFFFFF"/>
+          <rect x="260" y="214" width="400" height="22" rx="4" fill="url(#wrnp9bHc)"/>
+          <rect x="260" y="242" width="150" height="22" rx="4" fill="#FFFFFF"/>
+          <rect x="30" y="254" width="112" height="22" rx="6" transform="rotate(-0.6 86 265)" fill="#F4B63C"/>
+        </g>
+
+        <text class="wrnp9bL" x="30" y="70">Per shared hour</text>
+        <text class="wrnp9bS" x="30" y="88">50 h (A) vs 30 h (B)</text>
+        <text class="wrnp9bL" x="30" y="150">Per 1,000 picks</text>
+        <text class="wrnp9bS" x="30" y="168">6,000 (A) vs 2,500 (B)</text>
+        <text class="wrnp9bL" x="30" y="230">Per 100 person entries</text>
+        <text class="wrnp9bS" x="30" y="248">300 (A) vs 600 (B)</text>
+        <text class="wrnp9bK" x="86" y="269" text-anchor="middle">ranking flips</text>
+
+        <text class="wrnp9bL" x="248" y="70" text-anchor="end">A</text>
+        <text class="wrnp9bL" x="248" y="98" text-anchor="end">B</text>
+        <text class="wrnp9bL" x="248" y="150" text-anchor="end">A</text>
+        <text class="wrnp9bL" x="248" y="178" text-anchor="end">B</text>
+        <text class="wrnp9bL" x="248" y="230" text-anchor="end">A</text>
+        <text class="wrnp9bL" x="248" y="258" text-anchor="end">B</text>
+
+        <text class="wrnp9bV" x="590" y="71">0.80</text>
+        <text class="wrnp9bV" x="670" y="99">1.00</text>
+        <text class="wrnp9bV" x="492" y="151">6.67</text>
+        <text class="wrnp9bV" x="670" y="179">12.00</text>
+        <text class="wrnp9bV" x="670" y="231">13.33</text>
+        <text class="wrnp9bV" x="420" y="259">5.00</text>
+
+        <text class="wrnp9bN" x="30" y="306">Bars are scaled within each row. Hachured = Cell A, white = Cell B. Lower is fewer stops for the exposure.</text>
+        <text class="wrnp9bN" x="30" y="326">Constructed week; the widget below computes the same numbers and adds Wilson intervals.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - two denominators say Cell A stops less; the one that counts people says Cell B handles people better.</figcaption>
+    </figure>
+
+    <div class="wk" id="wrnp9-rate">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">Constructed Wrenfield week, declared here. Cell A (the main picking cell): 40 stops (26 zone entry, 6 contact force limit, 8 operator e-stop), 6,000 picks, 50 hours of shared operation, 300 person entries. Cell B (a hand-off station people visit often and briefly): 30 stops (15 zone entry, 9 contact force limit, 6 operator e-stop), 2,500 picks, 30 shared hours, 600 person entries. Pick a denominator and a cause.</span>
+      </div>
+      <div class="wk-body">
+        <label class="sql-label" for="wrnp9-den">Denominator</label>
+        <select class="sql-code" id="wrnp9-den">
+          <option value="hour">Per shared hour</option>
+          <option value="pick" selected>Per 1,000 picks</option>
+          <option value="entry">Per 100 person entries</option>
+        </select>
+        <label class="sql-label" for="wrnp9-cause">Cause</label>
+        <select class="sql-code" id="wrnp9-cause">
+          <option value="all" selected>All causes</option>
+          <option value="zone">Zone entry</option>
+          <option value="contact">Contact force limit</option>
+          <option value="estop">Operator e-stop</option>
+        </select>
+        <div id="wrnp9-out"></div>
+        <p class="sql-note" id="wrnp9-rank">...</p>
+        <p class="sql-note" id="wrnp9-verdict">...</p>
+      </div>
+      <div class="wk-foot">Constructed data, computed in this page with the engine's Wilson score interval (PAI.wilson). The per-pick and per-entry intervals treat each pick or entry as having at most one stop, which holds for this constructed log. A per-hour rate is a count over time and needs a Poisson interval, not Wilson, so none is printed for it.</div>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Read the default, then switch<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>At the default, all causes per 1,000 picks, the widget prints 6.67 for Cell A (95% interval 4.90 to 9.06) and 12.00 for Cell B (8.42 to 17.08). Cell A looks better, but the intervals overlap, so one week cannot separate them on this measure. Switch to per 100 person entries: Cell A prints 13.33 (9.95 to 17.65) and Cell B 5.00 (3.52 to 7.05). Now the ranking has flipped, and the intervals no longer overlap.</p>
+        <p>Neither number is wrong. Per pick answers "how often does the work get interrupted". Per person entry answers "when someone walks in, how likely is a stop". Cell B is visited twice as often for a fraction of the work, so it looks worse per pick and better per visit. Pick the denominator from the question before you look at the numbers, and write it into the report header, because the reader will otherwise assume the one that flatters their prior.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>What a stop record must contain<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Time</strong>, on the same clock as the episode (practitioner session 1), so the stop joins to what the robot was doing.</li>
+          <li><strong>Cause</strong>: contact force limit, zone entry, operator e-stop, or another category the safety layer reports. One field, a fixed vocabulary.</li>
+          <li><strong>Robot state</strong>: moving, grasping, placing; joint positions if available.</li>
+          <li><strong>Policy version</strong>, so a new policy's stops are never mixed with the old one's.</li>
+          <li><strong>Configured limit or zone version</strong>, because the limit can change and the count changes with it.</li>
+          <li><strong>Person present</strong>: yes or no, and from which sensor.</li>
+        </ul>
+        <p>And outside the record, the exposure for the same period: shared hours, picks and person entries, logged by the same system so the denominators cover exactly the stops' time window.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The same shape as the intervention log<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Operator e-stops are human judgements, like the takeovers in practitioner session 8: their rate depends on the person watching as much as on the robot. Report them as their own cause, never folded into the automatic stops. Zone-entry and force-limit stops are written by sensors and a configured rule; their rate depends on the rule's version and on how often people come close.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · covers evaluating a policy when people are nearby</span>
+      <h2>Success and stops are two axes, not one score</h2>
+      <span class="tag concept">6 min live</span>
+    </div>
+    <p class="lede">Practitioner session 7 built the success-rate evaluation. Near people, that evaluation is half the picture. Run the stop evaluation separately, report stops by cause and by condition, and put the two side by side. When a new policy succeeds more and stops more near people, the data does not say it is better. It says there is a trade-off, and someone accountable has to decide it.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn frontier chart. The horizontal axis is stops per 100 person entries, 0 to 20, lower is better. The vertical axis is success rate, 80 to 100 percent, higher is better. Two constructed policies: policy 0.4 at 88 percent success and 9.0 stops per 100 entries; policy 0.5, in marigold, at 94 percent success and 15.0 stops per 100 entries. Neither sits in the other's better-on-both region, so neither dominates.">
+        <defs>
+          <filter id="wrnp9cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="47" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp9cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp9cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp9cH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp9cK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9cA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrnp9cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrnp9cH" x="30" y="30">TWO CONSTRUCTED POLICIES, 200 TRIALS AND 300 PERSON ENTRIES EACH</text>
+
+        <g filter="url(#wrnp9cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <!-- better-on-both region of policy 0.4: up and left -->
+          <rect x="120" y="80" width="288" height="132" fill="#FCEFF7" stroke="#D9C6D1" stroke-dasharray="5 5"/>
+          <!-- better-on-both region of policy 0.5 -->
+          <path d="M120 80 h480 v66 h-480 Z" fill="url(#wrnp9cHc)" stroke="#D9C6D1" stroke-dasharray="5 5"/>
+          <!-- axes -->
+          <path d="M120 300 L780 300" marker-end="url(#wrnp9cAr)"/>
+          <path d="M120 300 L120 64" marker-end="url(#wrnp9cAr)"/>
+          <path d="M280 296 L280 304 M440 296 L440 304 M600 296 L600 304 M760 296 L760 304 M116 245 L124 245 M116 190 L124 190 M116 135 L124 135 M116 80 L124 80"/>
+          <!-- the two policies -->
+          <circle cx="408" cy="212" r="9" fill="#9B0865"/>
+          <circle cx="600" cy="146" r="10" fill="#F4B63C"/>
+          <path d="M424 204 L584 154" stroke-dasharray="3 6"/>
+          <!-- doodle: a gripper -->
+          <path d="M820 262 L820 248 M808 248 L832 248 M808 248 L808 268 M832 248 L832 268" stroke="#B5338B" stroke-width="2.5"/>
+        </g>
+
+        <text class="wrnp9cA" x="120" y="320" text-anchor="middle">0</text>
+        <text class="wrnp9cA" x="280" y="320" text-anchor="middle">5</text>
+        <text class="wrnp9cA" x="440" y="320" text-anchor="middle">10</text>
+        <text class="wrnp9cA" x="600" y="320" text-anchor="middle">15</text>
+        <text class="wrnp9cA" x="760" y="320" text-anchor="middle">20</text>
+        <text class="wrnp9cA" x="450" y="342" text-anchor="middle">stops per 100 person entries (lower is better)</text>
+        <text class="wrnp9cA" x="108" y="304" text-anchor="end">80%</text>
+        <text class="wrnp9cA" x="108" y="249" text-anchor="end">85%</text>
+        <text class="wrnp9cA" x="108" y="194" text-anchor="end">90%</text>
+        <text class="wrnp9cA" x="108" y="139" text-anchor="end">95%</text>
+        <text class="wrnp9cA" x="108" y="84" text-anchor="end">100%</text>
+        <text class="wrnp9cA" x="30" y="50">success rate (higher is better)</text>
+
+        <text class="wrnp9cL" x="400" y="240" text-anchor="end">policy 0.4</text>
+        <text class="wrnp9cS" x="400" y="256" text-anchor="end">176/200 · 27 stops in 300</text>
+        <text class="wrnp9cL" x="616" y="142">policy 0.5</text>
+        <text class="wrnp9cS" x="616" y="158">188/200 · 45 stops in 300</text>
+        <text class="wrnp9cS" x="128" y="196">0.4 better on both: empty</text>
+        <text class="wrnp9cK" x="128" y="104">0.5 better on both: empty</text>
+
+        <text class="wrnp9cN" x="30" y="372">Neither sits in the other's better-on-both box: neither dominates, and a person has to decide.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold policy succeeds more and stops more near people: a trade-off to decide, not a winner to announce.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Report stops by cause and condition<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A total stop rate hides the mechanism. Policy 0.5 in the constructed frontier might stop more because it moves faster through the shared zone, or because it reaches closer to the tote edge where people stand, or because its new grasp presses harder on parcels and trips the force limit with nobody present. Each of those is a different fix. Split stops by cause, then by condition (time of shift, which station, person present or not), exactly as practitioner session 7 splits success by condition.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>Kress-Gazit et al. (2024) report re-running one policy on the same initial conditions after a lab reorganisation, and success dropped from 13/20 to 0/8. The policy had not changed; the room had. A shared cell changes every shift: who is on the floor, where they stand, how often they restock. A stop rate from a quiet week is a measurement of that week's people as much as of the policy.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Near-misses are data<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A stop is recorded because a threshold was crossed. The situations that came close and did not cross it are invisible unless someone chooses to log them: a person inside the limited zone with no stop, a contact force just under the limit, an e-stop reached for and not pressed. Those are the leading indicator. Log the closest approach and the peak force per person entry, not only the trips, and the stop rate gains a distribution behind it.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Why "succeeds more" is not "better" by default<span class="mini">2 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>The cost asymmetry from Part 1 is the reason. Six more successes per hundred trials and six more stops per hundred person entries are not exchangeable units, and no formula on this page converts one into the other. A data team's job is to make the trade-off visible, with intervals on both axes, and hand it to the people accountable for the cell. Practitioner session 7's caution applies twice here: both axes are estimated from small counts.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ BUILD-ALONG ============ -->
+  <section class="section" id="demo-1">
+    <div class="section-kicker">
+      <span class="klabel">Build-along</span>
+      <h2>A weekly stop report in pandas, from a constructed log</h2>
+      <span class="tag demo">★ 22 min · everyone builds</span>
+    </div>
+    <p class="lede">Python 3.10 or later with numpy and pandas. You build Cell A's constructed week as a stop log of 40 rows with the record fields from Part 2, count stops by cause, compute the three rates and each cause's share, and print the one-line header every weekly stop report should start with. The figure shows where each printed number lands in the report.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn weekly stop report layout. A deep header bar names the cell, the week, the policy and the word constructed. Below it three panels: stops by cause with counts and shares, zone entry 26 at 65.0 percent, operator e-stop 8 at 20.0 percent, contact force limit 6 at 15.0 percent; the three rates in marigold, 0.8 per shared hour, 6.67 per 1,000 picks, 13.33 per 100 person entries; and context, 33 of 40 stops with a person present, with the exposure stated.">
+        <defs>
+          <filter id="wrnp9dSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="53" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrnp9dHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrnp9dAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrnp9dH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9dL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9dS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrnp9dK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrnp9dV { font: 800 16px Inter, sans-serif; fill: #6B0546; }
+          .wrnp9dW { font: 800 12px Inter, sans-serif; fill: #FFFFFF; }
+          .wrnp9dN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <g filter="url(#wrnp9dSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="30" width="820" height="40" rx="8" fill="#6B0546"/>
+          <rect x="30" y="86" width="260" height="190" rx="8" transform="rotate(-0.5 160 181)" fill="#FFFFFF"/>
+          <rect x="310" y="86" width="260" height="190" rx="8" transform="rotate(0.4 440 181)" fill="#F4B63C"/>
+          <rect x="590" y="86" width="260" height="190" rx="8" transform="rotate(-0.4 720 181)" fill="#FCEFF7"/>
+          <!-- doodle: a clipboard clip on the header -->
+          <path d="M800 22 L800 40 M790 22 L810 22"/>
+          <path d="M46 128 L274 128 M326 128 L554 128 M606 128 L834 128" stroke="#D9C6D1"/>
+        </g>
+
+        <text class="wrnp9dW" x="46" y="55">WRENFIELD CELL A · week of 2026-11-16 · policy-0.5 · 40 stops · constructed</text>
+
+        <text class="wrnp9dH" x="46" y="114">Stops by cause</text>
+        <text class="wrnp9dL" x="46" y="152">zone entry</text>
+        <text class="wrnp9dV" x="274" y="152" text-anchor="end">26</text>
+        <text class="wrnp9dS" x="46" y="170">65.0% of stops</text>
+        <text class="wrnp9dL" x="46" y="198">operator e-stop</text>
+        <text class="wrnp9dV" x="274" y="198" text-anchor="end">8</text>
+        <text class="wrnp9dS" x="46" y="216">20.0% of stops</text>
+        <text class="wrnp9dL" x="46" y="244">contact force limit</text>
+        <text class="wrnp9dV" x="274" y="244" text-anchor="end">6</text>
+        <text class="wrnp9dS" x="46" y="262">15.0% of stops</text>
+
+        <text class="wrnp9dH" x="326" y="114">Three rates, denominators named</text>
+        <text class="wrnp9dV" x="326" y="158">0.8</text>
+        <text class="wrnp9dK" x="380" y="157">per shared hour (50 h)</text>
+        <text class="wrnp9dV" x="326" y="204">6.67</text>
+        <text class="wrnp9dK" x="380" y="203">per 1,000 picks (6000)</text>
+        <text class="wrnp9dV" x="326" y="250">13.33</text>
+        <text class="wrnp9dK" x="390" y="249">per 100 entries (300)</text>
+
+        <text class="wrnp9dH" x="606" y="114">Context</text>
+        <text class="wrnp9dL" x="606" y="152">33 of 40 with a person present</text>
+        <text class="wrnp9dS" x="606" y="174">policy version on every row</text>
+        <text class="wrnp9dS" x="606" y="196">limit version: add it (homework)</text>
+        <text class="wrnp9dS" x="606" y="218">near-misses: not yet logged</text>
+        <text class="wrnp9dS" x="606" y="240">no comparison without intervals</text>
+
+        <text class="wrnp9dN" x="30" y="304">Every number here is a line the script prints. The header goes first: no rate travels without its exposure.</text>
+        <text class="wrnp9dN" x="30" y="324">Constructed week, seed 9 for the times and robot states; the counts and exposures are fixed.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold panel is the one a reader will quote, so it carries its denominators on the same line.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Build the constructed stop log</h4>
+        <p>Forty rows, one per protective stop, with the record fields from Part 2. Causes and the person-present flag are fixed so the counts match the widget; the times and robot states are drawn with seed 9. The exposure for the same week sits in a dictionary next to the log.</p>
+        <div class="prompt-box good"><span class="label">stops.py, part 1</span>import numpy as np
+import pandas as pd
+
+rng = np.random.default_rng(9)                # constructed Wrenfield week
+causes = (["zone entry"] * 26 + ["contact force limit"] * 6
+          + ["operator e-stop"] * 8)
+person = [True] * 26 + [True, True, False, False, False, False] + [True] * 5 + [False] * 3
+log = pd.DataFrame({
+    "t": pd.Timestamp("2026-11-16 08:00")
+         + pd.to_timedelta(np.sort(rng.uniform(0, 5 * 24 * 3600, 40)), unit="s"),
+    "cause": causes,
+    "robot_state": rng.choice(["moving", "grasping", "placing"], 40),
+    "policy": "policy-0.5",
+    "person_present": person,
+})
+exposure = {"shared_hours": 50, "picks": 6000, "person_entries": 300}</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Stops by cause and the three rates</h4>
+        <p>Count by cause, then divide the same total by each exposure. Name the denominator in every printed line; a rate without one is the number from the start of the session that nobody could judge.</p>
+        <div class="prompt-box good"><span class="label">stops.py, part 2</span>by_cause = log["cause"].value_counts()
+print(by_cause.to_string())
+n = len(log)
+print("stops:", n)
+print("per shared hour:", round(n / exposure["shared_hours"], 2))
+print("per 1,000 picks:", round(1000 * n / exposure["picks"], 2))
+print("per 100 person entries:", round(100 * n / exposure["person_entries"], 2))</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Per-cause share and the person-present count</h4>
+        <p>The share says where to look first. The person-present count separates stops that involved someone from those that did not, such as a force-limit trip on a jammed parcel.</p>
+        <div class="prompt-box good"><span class="label">stops.py, part 3</span>share = (100 * by_cause / n).round(1)
+print(share.to_string())
+print("with a person present:", int(log["person_present"].sum()))</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Write the report header</h4>
+        <p>One line that travels with every chart and table from this week: the cell, the week, the policy, the count, all three exposures, and the word constructed.</p>
+        <div class="prompt-box good"><span class="label">stops.py, part 4</span>print(f"WRENFIELD CELL A · week of {log['t'].min():%Y-%m-%d} · "
+      f"{log['policy'].iloc[0]} · {n} stops · "
+      f"{exposure['shared_hours']} shared h · {exposure['picks']} picks · "
+      f"{exposure['person_entries']} entries · constructed")</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Run it and read the output</h4>
+        <p>Run <code>python3 stops.py</code> from a scratch folder. The output below is what the script printed when this page was written (Python 3 with pandas 2.1 and numpy 1.26). Every line depends only on the fixed counts and exposures, so it should match yours.</p>
+        <div class="prompt-box good"><span class="label">Expected output</span>cause
+zone entry             26
+operator e-stop         8
+contact force limit     6
+stops: 40
+per shared hour: 0.8
+per 1,000 picks: 6.67
+per 100 person entries: 13.33
+cause
+zone entry             65.0
+operator e-stop        20.0
+contact force limit    15.0
+with a person present: 33
+WRENFIELD CELL A · week of 2026-11-16 · policy-0.5 · 40 stops · 50 shared h · 6000 picks · 300 entries · constructed</div>
+      </div></div>
+      <div class="step"><div>
+        <h4>Extend it: the denominator that answers your question</h4>
+        <p>Add Cell B's exposure (2,500 picks, 30 shared hours, 600 entries) and 30 stops, and print both cells' rates side by side. Then add a <code>limit_version</code> column and confirm your report refuses to compare two weeks whose limit versions differ.</p>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> No stop rate leaves the team without its denominator in the same sentence and its exposure in the header. "13.33 per 100 person entries, 300 entries, constructed week" can be argued with. "40 stops" cannot even be read.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">In the constructed Wrenfield week, Cell A has fewer stops per 1,000 picks than Cell B but more stops per 100 person entries. Why can both be true?</p>
+      <button class="qopt" type="button">A · One of the two calculations must contain an arithmetic error</button>
+      <button class="qopt" type="button">B · Rates only differ because of random noise and will agree next week</button>
+      <button class="qopt" type="button">C · The denominators measure different exposures: Cell B does less picking but is visited twice as often, so it looks worse per pick and better per visit</button>
+      <p class="qwhy">Same stops, different exposure. Each denominator answers a different question, which is why the question has to be chosen before the numbers are read.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">Which set of fields makes a protective stop record usable as data?</p>
+      <button class="qopt" type="button">A · Time on the episode clock, cause, robot state, policy version, configured limit or zone version, and whether a person was present</button>
+      <button class="qopt" type="button">B · A count of stops per day</button>
+      <button class="qopt" type="button">C · The cause only, since the safety layer already decided it was a stop</button>
+      <p class="qwhy">Without time and policy version the stop cannot be joined to what the robot was doing or attributed to a policy; without the limit version, counts from different weeks are not comparable.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">Why are ISO/TS 15066, ISO 10218 and Behrens et al. (2022) cited here as "reported", with no force or pressure values?</p>
+      <button class="qopt" type="button">A · Because the values are not important for robot data</button>
+      <button class="qopt" type="button">B · Because the standards are paywalled and were not read at source, the values are described as preliminary and under revision, and a data page is not compliance advice</button>
+      <button class="qopt" type="button">C · Because the standards have been withdrawn</button>
+      <p class="qwhy">Quoting a number you have not read at source, from a table its own authors call preliminary, would turn a data lesson into an unverified compliance claim. The data consequence, record the limit version, holds whatever the values are.</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">Before session 10</span>
+      <h2>Homework</h2>
+    </div>
+    <ol>
+      <li>Add a <code>limit_version</code> column to <code>stops.py</code>, change it halfway through the week, and make the report print the rates separately for each version.</li>
+      <li>Add Wilson intervals to the per-pick and per-entry rates using any library or the formula, and check them against the widget's printed values for Cell A.</li>
+      <li>Pick any incident or alert log you know (any domain). Write down its numerator, the denominator your team uses, and one other denominator that would rank things differently.</li>
+      <li>Design a near-miss record for Wrenfield's cell: which fields, from which sensor, and what threshold makes a situation "near". Practitioner session 10 runs the full sim-to-real bench.</li>
+    </ol>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Collaborative operation and force limits</span><span class="note">ISO/TS 15066:2016, "Robots and robotic devices - Collaborative robots": power and force limiting as one of four modes; Annex A per-region values described as preliminary. Reported; no values quoted.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The 2025 revision</span><span class="note">ISO 10218-1:2025 and ISO 10218-2:2025: collaborative content consolidated into Part 1. Reported; re-verify the catalogue.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Pain thresholds under revision</span><span class="note">Behrens et al. (2022), Frontiers in Robotics and AI, doi 10.3389/frobt.2021.667818: 112 subjects; thresholds differ between men and women in some regions. Reported.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Stop records, denominators and the weekly report</span><span class="note">Constructed Wrenfield log and two cells; widget intervals from the engine's Wilson score interval (Wilson 1927, reported); the build-along output was run and copied.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Reporting conditions and complementary metrics</span><span class="note">Kress-Gazit et al. (2024), arXiv 2409.09491, including 13/20 to 0/8 after a lab reorganisation. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Intervention logs</span><span class="note">Operator e-stops as human judgements. Practitioner session 8.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Evaluating success in small trials</span><span class="note">The other axis of the frontier. Practitioner session 7.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Rare events over millions of miles</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-autonomous-driving-with-phoebe/">learn autonomous driving</a>.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>The asymmetry.</strong> A missed grasp and a contact with a person are not one metric. Keep two ledgers.</div>
+      <div class="cheat-item"><strong>The safety layer.</strong> Sits under the policy and writes the stops; a stop is exposure to risk, not an averted accident.</div>
+      <div class="cheat-item"><strong>The record.</strong> Time, cause, robot state, policy version, limit version, person present.</div>
+      <div class="cheat-item"><strong>Three denominators.</strong> Per shared hour, per pick, per person entry. Choose from the question.</div>
+      <div class="cheat-item"><strong>The flip.</strong> Same stops, different exposure: two cells can swap places.</div>
+      <div class="cheat-item"><strong>Intervals.</strong> Wilson for per-pick and per-entry proportions; overlapping intervals rank nothing.</div>
+      <div class="cheat-item"><strong>Two axes.</strong> Success and stops near people side by side; more success with more stops is a trade-off.</div>
+      <div class="cheat-item"><strong>Standards.</strong> Cited as reported, never quoted as limits. Not legal advice; record the limit version.</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>The sim-to-real bench.</strong> Every lever from the practitioner track on one constructed bench: randomization widths, real demonstrations, a bumped camera, and the evaluation that can or cannot tell the rungs apart.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Practitioner session 9 of 10 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="p8-the-intervention-log-as-labels.html">← Prev: The intervention log as labels</a>
+        <a href="p10-the-sim-to-real-bench.html">Next: The sim-to-real bench →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/pai-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  var den = document.getElementById("wrnp9-den");
+  var cause = document.getElementById("wrnp9-cause");
+  var out = document.getElementById("wrnp9-out");
+  var rank = document.getElementById("wrnp9-rank");
+  var verdict = document.getElementById("wrnp9-verdict");
+  if (!den || !cause || !out || !window.PAI) return;
+  // Constructed Wrenfield week: two cells, fixed counts and exposures.
+  var CELLS = [
+    { name: "Cell A", stops: { zone: 26, contact: 6, estop: 8 }, hours: 50, picks: 6000, entries: 300 },
+    { name: "Cell B", stops: { zone: 15, contact: 9, estop: 6 }, hours: 30, picks: 2500, entries: 600 }
+  ];
+  var DEN = {
+    hour: { label: "per shared hour", key: "hours", unit: "shared hours", scale: 1, prop: false },
+    pick: { label: "per 1,000 picks", key: "picks", unit: "picks", scale: 1000, prop: true },
+    entry: { label: "per 100 person entries", key: "entries", unit: "person entries", scale: 100, prop: true }
+  };
+  var CAUSE = { all: "all causes", zone: "zone entry", contact: "contact force limit", estop: "operator e-stop" };
+  function count(c, k) { return k === "all" ? c.stops.zone + c.stops.contact + c.stops.estop : c.stops[k]; }
+  function calc(c, d, k) {
+    var D = DEN[d], s = count(c, k), n = c[D.key], r = { s: s, n: n, rate: D.scale * s / n, ci: null };
+    if (D.prop) { var w = window.PAI.wilson(s, n); r.ci = [D.scale * w.lo, D.scale * w.hi]; }
+    return r;
+  }
+  function render() {
+    var d = den.value, k = cause.value, D = DEN[d];
+    var R = CELLS.map(function (c) { return calc(c, d, k); });
+    var html = '<table class="sql-table"><thead><tr><th>Cell</th><th>Stops (' + CAUSE[k] + ')</th><th>Exposure</th><th>Rate ' + D.label + '</th><th>Wilson 95%</th></tr></thead><tbody>';
+    R.forEach(function (r, i) {
+      html += "<tr><td>" + CELLS[i].name + "</td><td>" + r.s + "</td><td>" + r.n.toLocaleString("en-US") + " " + D.unit + "</td><td><b>" + r.rate.toFixed(2) + "</b></td><td>" + (r.ci ? r.ci[0].toFixed(2) + " to " + r.ci[1].toFixed(2) : "not printed (count over time)") + "</td></tr>";
+    });
+    out.innerHTML = html + "</tbody></table>";
+    var parts = Object.keys(DEN).map(function (dd) {
+      var a = calc(CELLS[0], dd, k).rate, b = calc(CELLS[1], dd, k).rate;
+      var who = a < b ? "Cell A lower" : (b < a ? "Cell B lower" : "a tie");
+      var lab = DEN[dd].label; return lab.charAt(0).toUpperCase() + lab.slice(1) + ": " + who;
+    });
+    rank.textContent = "Ranking for " + CAUSE[k] + " under all three denominators. " + parts.join(" · ") + ".";
+    var low = R[0].rate < R[1].rate ? 0 : 1, high = 1 - low;
+    if (R[0].rate === R[1].rate) {
+      verdict.textContent = "The two cells tie " + D.label + " for " + CAUSE[k] + ".";
+    } else if (!D.prop) {
+      verdict.textContent = CELLS[low].name + " is lower " + D.label + " (" + R[low].rate.toFixed(2) + " vs " + R[high].rate.toFixed(2) + "), with no interval printed for a rate over time. If the ranking changes when you switch the denominator, the cells differ in exposure, not only in risk.";
+    } else if (R[low].ci[1] < R[high].ci[0]) {
+      verdict.textContent = CELLS[low].name + " is lower " + D.label + " and the Wilson intervals do not overlap: this week separates the cells on this measure. Check whether another denominator ranks them the other way before reporting it.";
+    } else {
+      verdict.textContent = CELLS[low].name + " is lower " + D.label + ", but the Wilson intervals overlap: one constructed week cannot separate the cells on this measure.";
+    }
+  }
+  den.addEventListener("change", render);
+  cause.addEventListener("change", render);
+  render();
+})();
+</script>
+<style>
+  #wrnp9-rate .sql-code { border: 1px solid var(--hairline); border-radius: 8px; max-width: 24rem; }
+  #wrnp9-rate table.sql-table { margin: .6rem 0 .2rem; font-size: .85rem; }
+</style>
+</body>
+</html>

@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- social:start -->
+<meta name="description" content="Leader session 1 of 6. A robot is a data loop: sense, decide, act, log, learn, and the data team owns the evidence at every turn. Why a simulator that scores 100 percent can grasp 29 times in 50 on a real table. Wrenfield Lab is a constructed team. Not investment advice.">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Learn with Phoebe">
+<meta property="og:title" content="The robot is a data loop - learn physical ai robotics with phoebe">
+<meta property="og:description" content="Leader session 1 of 6. Five turns of the loop, five seats for the data team, and a simulator that is not the judge.">
+<meta property="og:url" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/courses/a1-the-robot-is-a-data-loop.html">
+<meta property="og:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="The robot is a data loop - learn physical ai robotics with phoebe">
+<meta name="twitter:description" content="When the model's output moves an arm, every number needs a trial count, a condition and a definition of success.">
+<meta name="twitter:image" content="https://phoebefu6.github.io/learn-physical-ai-robotics-with-phoebe/assets/og-cover.png">
+<!-- social:end -->
+<title>Leader session 1 · The robot is a data loop - learn physical ai robotics with phoebe</title>
+<link rel="stylesheet" href="../assets/style.css?v=1">
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="wrap">
+    <span class="crumb"><a href="../index.html">learn-physical-ai-robotics-with-phoebe</a> / Leader session 1 of 6</span>
+    <button class="btn" id="toggle-all" type="button">Expand all</button>
+    <button class="btn primary" id="zoom-toggle" type="button">Projector zoom: off</button>
+  </div>
+</div>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow">Learn Physical AI &amp; Robotics with Phoebe · Leader session 1 of 6</div>
+    <h1>The robot is a <span class="accent">data loop</span></h1>
+    <p class="sub">A warehouse row records something that already happened. A robot's data is different: the model's output moves an arm, the arm changes the world, and the next frame records what the model did. Every grasp is both a prediction and an experiment. Wrenfield Lab, a constructed robotics team teaching a two-arm robot to pick and pack parcels, is the case for all sixteen sessions; every Wrenfield number is generated in the page, not observed. Tonight is the loop, where the data team sits in it, and why a simulator that scores 100 percent is not the judge. Nothing here is investment advice.</p>
+    <div class="chip-row">
+      <span class="chip level">🟢 Foundations</span>
+      <span class="chip audience">Leaders who fund or sign off robotics data work</span>
+      <span class="chip audience">Data people arriving from the warehouse</span>
+      <span class="chip time">45 min</span>
+    </div>
+    <div class="agenda">
+      <span class="a1" style="flex:1">0-3 · Welcome</span>
+      <span class="a2" style="flex:3">3-18 · Five turns, five seats</span>
+      <span class="a3" style="flex:3">18-28 · Sim is not the judge</span>
+      <span class="a4" style="flex:4">28-45 · Build-along and Q&amp;A</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ INTRO ============ -->
+  <section class="section" id="intro">
+    <div class="section-kicker">
+      <span class="klabel">Part 0</span>
+      <h2>Wrenfield Lab, on the morning the first episodes land</h2>
+    </div>
+    <p class="lede">Wrenfield Lab is constructed: a small team, one two-arm robot at a packing bench, a simulator on a workstation, and a data analyst who came from a retail warehouse. Her first ticket says "tell us whether the new grasp policy is ready". What arrives is not a fact table. It is a few hundred simulated episodes, twenty recorded demonstrations, a calibration file, and a spreadsheet of fifty real attempts with a tick or a cross. The six leader sessions are about reading that pile as a decision-maker; the ten practitioner sessions are about building on it.</p>
+
+    <div class="legend">
+      <span class="pill">Live = presented in the 45 minutes</span>
+      <span class="pill">Self-study = the full depth, after class</span>
+      <span class="pill">🔍 Every diagram zooms</span>
+    </div>
+
+    <div class="callout win">
+      <p><strong>★ What you walk out with tonight.</strong> A picture of the robot as a loop with five turns: sense, decide, act, log, learn, and the five places a data team owns the evidence. Why a simulator is a training ground and never the judge: in Wrenfield's constructed bench a policy that grasps 100 percent of simulated parcels grasps 29 of 50 real ones. Why every robotics number needs three things next to it: how many trials, under which conditions, and who decided what "success" meant. And five questions to put to any robot data claim before anyone shows you a video. Nothing here is investment advice or a view on any company.</p>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>Why the warehouse instinct misfires here<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>A warehouse analyst trusts three things without naming them. A row records an event that would have happened whether or not anyone measured it. A row has a stable identity: an order id, a customer. And the metric is cheap to recompute on fresh data every week.</p>
+        <p>Robot data breaks all three. The model's own output changed what was recorded next, so the data depends on which policy was running. The identity of an episode is not one key but a bundle: which robot, which calibration, which version of the policy, which operator, which lighting. And the metric that matters, "did it work on the real robot", costs minutes of a person resetting the table per trial, so most teams have tens of trials, not millions of rows.</p>
+        <div class="callout example">
+          <span class="ex-pill">Real world</span>
+          <p>Zhao, Kumar, Levine and Finn (2023), the paper that introduced a low-cost two-arm teleoperation rig and the ACT policy, evaluated each real task with 25 trials. Their 50 demonstrations per task were 10 to 20 minutes of data but took 30 to 60 minutes of wall-clock time because of resets and operator mistakes. That is the economics of physical data: the expensive part is the world, not the storage.</p>
+        </div>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>The words that keep coming back<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Episode.</strong> One attempt at a task from start to finish: every camera frame, every joint reading and every command, on one clock, plus whether it succeeded. The unit of robot data (practitioner session 1).</li>
+          <li><strong>Demonstration.</strong> An episode in which a person drove the robot, usually through teleoperation. Demonstrations are the labelled training data of imitation learning (leader session 2).</li>
+          <li><strong>Policy.</strong> The model that maps what the robot senses to what it does next. In Wrenfield's bench it is deliberately tiny so you can watch it learn.</li>
+          <li><strong>Rollout.</strong> The policy running on its own, in simulation or on the real robot. An evaluation is a set of rollouts with a success rule.</li>
+          <li><strong>Embodiment.</strong> The particular body: arm, gripper, cameras and where they are mounted. Data from one embodiment does not drop straight into another (practitioner session 4).</li>
+          <li><strong>Sim-to-real gap.</strong> The difference between how a policy does in the simulator and on the real robot. The p10 bench prints it on every rung.</li>
+          <li><strong>Constructed.</strong> Wrenfield Lab and every number about it are invented so that the truth is knowable. The research numbers are real and cited.</li>
+        </ul>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 1 ============ -->
+  <section class="section" id="part-1">
+    <div class="section-kicker">
+      <span class="klabel">Part 1 · covers the loop and the data team's seats</span>
+      <h2>Five turns of the loop, each handing the next a guess</h2>
+      <span class="tag concept">15 min live</span>
+    </div>
+    <p class="lede">The clearest way to see a robot as a data problem is to draw the loop it runs. Cameras and joint sensors sense. A policy decides where to move. The arm acts, and the world changes. Everything is logged as an episode. The team learns from the episodes and ships a new policy, which collects different data next time. Each turn is right most of the time and wrong in ways the next turn inherits. Under every turn sits a piece of data work.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn loop of a learning robot with five turns: sense, cameras and joint readings at 50 Hz; decide, the policy picks the next target; act, the arm moves and the parcel moves; log, one episode on one clock with a success flag; learn, a new policy trained from episodes. An arrow returns from learn to sense, labelled the new policy collects different data. Below, the data team's five seats: calibration, highlighted in marigold, where the camera is; demonstrations; episodes; evaluation trials; simulation.">
+        <defs>
+          <filter id="wrna1aSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="11" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna1aHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna1aAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna1aH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna1aL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna1aS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna1aK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrna1aA { font: 700 11px Inter, sans-serif; fill: #9B0865; }
+          .wrna1aN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna1aH" x="30" y="32">THE LOOP, ONCE AROUND</text>
+        <text class="wrna1aH" x="30" y="216">WHERE THE DATA TEAM SITS</text>
+
+        <g filter="url(#wrna1aSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="30" y="48" width="150" height="84" rx="8" transform="rotate(-0.6 105 90)" fill="#FFFFFF"/>
+          <rect x="200" y="48" width="150" height="84" rx="8" transform="rotate(0.5 275 90)" fill="#FFFFFF"/>
+          <rect x="370" y="48" width="150" height="84" rx="8" transform="rotate(-0.4 445 90)" fill="#FFFFFF"/>
+          <rect x="540" y="48" width="150" height="84" rx="8" transform="rotate(0.6 615 90)" fill="#FFFFFF"/>
+          <rect x="710" y="48" width="150" height="84" rx="8" transform="rotate(-0.5 785 90)" fill="#FCEFF7"/>
+          <path d="M182 90 L197 90" marker-end="url(#wrna1aAr)"/>
+          <path d="M352 90 L367 90" marker-end="url(#wrna1aAr)"/>
+          <path d="M522 90 L537 90" marker-end="url(#wrna1aAr)"/>
+          <path d="M692 90 L707 90" marker-end="url(#wrna1aAr)"/>
+          <path d="M785 134 L785 160 L105 160 L105 136" marker-end="url(#wrna1aAr)"/>
+          <rect x="30" y="232" width="150" height="76" rx="8" transform="rotate(0.7 105 270)" fill="#F4B63C"/>
+          <rect x="200" y="232" width="150" height="76" rx="8" transform="rotate(-0.5 275 270)" fill="#FCEFF7"/>
+          <rect x="370" y="232" width="150" height="76" rx="8" transform="rotate(0.4 445 270)" fill="url(#wrna1aHc)"/>
+          <rect x="540" y="232" width="150" height="76" rx="8" transform="rotate(-0.6 615 270)" fill="#FCEFF7"/>
+          <rect x="710" y="232" width="150" height="76" rx="8" transform="rotate(0.5 785 270)" fill="#FCEFF7"/>
+          <!-- doodle: a two-finger gripper -->
+          <path d="M800 30 L800 16 M790 16 L810 16 M790 16 L790 34 M810 16 L810 34" stroke="#B5338B" stroke-width="2.5"/>
+        </g>
+
+        <text class="wrna1aL" x="46" y="74">Sense</text>
+        <text class="wrna1aS" x="46" y="96">cameras, joint</text>
+        <text class="wrna1aS" x="46" y="112">readings, 50 Hz</text>
+        <text class="wrna1aL" x="216" y="74">Decide</text>
+        <text class="wrna1aS" x="216" y="96">the policy picks</text>
+        <text class="wrna1aS" x="216" y="112">the next target</text>
+        <text class="wrna1aL" x="386" y="74">Act</text>
+        <text class="wrna1aS" x="386" y="96">the arm moves and</text>
+        <text class="wrna1aS" x="386" y="112">the parcel moves</text>
+        <text class="wrna1aL" x="556" y="74">Log</text>
+        <text class="wrna1aS" x="556" y="96">one episode, one</text>
+        <text class="wrna1aS" x="556" y="112">clock, a success flag</text>
+        <text class="wrna1aL" x="726" y="74">Learn</text>
+        <text class="wrna1aS" x="726" y="96">train a new policy</text>
+        <text class="wrna1aS" x="726" y="112">from the episodes</text>
+        <text class="wrna1aA" x="445" y="182" text-anchor="middle">the new policy collects different data: the loop feeds on itself</text>
+
+        <text class="wrna1aL" x="46" y="258">Calibration</text>
+        <text class="wrna1aK" x="46" y="278">where each camera</text>
+        <text class="wrna1aK" x="46" y="294">really is</text>
+        <text class="wrna1aL" x="216" y="258">Demonstrations</text>
+        <text class="wrna1aS" x="216" y="278">people drive the arm;</text>
+        <text class="wrna1aS" x="216" y="294">the costly label</text>
+        <text class="wrna1aL" x="386" y="258">Episodes</text>
+        <text class="wrna1aK" x="386" y="278">frames, joints,</text>
+        <text class="wrna1aK" x="386" y="294">commands, outcome</text>
+        <text class="wrna1aL" x="556" y="258">Evaluation trials</text>
+        <text class="wrna1aS" x="556" y="278">tens, not millions,</text>
+        <text class="wrna1aS" x="556" y="294">each reset by hand</text>
+        <text class="wrna1aL" x="726" y="258">Simulation</text>
+        <text class="wrna1aS" x="726" y="278">cheap episodes,</text>
+        <text class="wrna1aS" x="726" y="294">never the judge</text>
+
+        <text class="wrna1aN" x="30" y="350">Every turn hands the next a guess. A wrong calibration poisons every seat to its right: the policy learns</text>
+        <text class="wrna1aN" x="30" y="368">from where the camera says the parcel is, not from where it is.</text>
+        <text class="wrna1aN" x="30" y="396">Wrenfield Lab is constructed. The 50 Hz rate is from Zhao et al. (2023).</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold seat is where most silent failures start: if the camera is not where the file says, every downstream number is quietly wrong.</figcaption>
+    </figure>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What each turn hands on, and how it goes wrong<span class="mini">5 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>Sense.</strong> Cameras see the parcel in pixels; joint encoders report where the arm thinks it is. Neither tells you where the parcel is in the robot's own coordinates until a calibration connects them. Practitioner session 2 is that connection.</p>
+        <p><strong>Decide and act.</strong> The policy turns observations into the next target for the arm, many times a second. Zhao and colleagues recorded and controlled their rig at 50 Hz, so an 8 to 14 second task is 400 to 700 decisions. A small error early compounds, because each decision starts from where the last one left the arm.</p>
+        <p><strong>Log and learn.</strong> The episode is the record of all of that on one clock, plus a judgement: did it work? The next policy is trained from those episodes. Change the policy and you change what gets logged, so a dataset is always a dataset of some policy, never of the world in general.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>The five seats, as five questions<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <ul>
+          <li><strong>Calibration:</strong> when was each camera last calibrated, and would anyone notice if one moved? Wrenfield's break button (p10) moves one by 2 cm and success falls from 49 of 50 to 0.</li>
+          <li><strong>Demonstrations:</strong> who drove the robot, how many episodes were thrown away, and does the set cover the conditions the robot will meet?</li>
+          <li><strong>Episodes:</strong> can you replay any attempt from every camera on one clock, and does each one say which robot, calibration and policy produced it?</li>
+          <li><strong>Evaluation trials:</strong> how many, under which conditions, and who defined success? A rate without a trial count is not a result.</li>
+          <li><strong>Simulation:</strong> what was randomized, how wide, and how was the result checked on the real robot?</li>
+        </ul>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>An episode is not a row<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>In the two-arm rig of Zhao et al. (2023), an observation is the follower arms' joint positions plus images from four cameras, and the action recorded is the leader arms' joint positions, the ones the person moved. The authors explain why it must be the leader's: the force the robot applies is implicit in the difference between leader and follower.</p>
+        <p>So the smallest unit the data team works with is a time-indexed bundle of images, joint vectors and commands, with a success flag at the end that a person decided. Warehouse habits about one row per event and a primary key have to be rebuilt around time and around the robot that produced it.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 2 ============ -->
+  <section class="section" id="part-2">
+    <div class="section-kicker">
+      <span class="klabel">Part 2 · covers the sim-to-real gap, from research and from the bench</span>
+      <h2>The simulator is a training ground, never the judge</h2>
+      <span class="tag concept">10 min live</span>
+    </div>
+    <p class="lede">Simulation makes episodes cheap: no resets, no broken parcels, thousands an hour. That is why almost every robotics team uses it. But a policy can be perfect in the simulator and mediocre on the real table, because the simulator's lighting, camera position and lens are not the real ones. The research answer is domain randomization: vary the simulator so widely that the real world looks like one more variation. Wrenfield's bench shows each step of that, with the real-table result next to the simulated one.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn paired bars for four rungs of the constructed Wrenfield bench, simulated success against real successes out of 50 trials. No randomization: simulator 100 percent, real 29 of 50. Lighting randomized: 98.6 percent, real 37 of 50. Plus camera pose randomized: 98.6 percent, real 46 of 50. Plus 20 real demonstrations: 98.0 percent, real 49 of 50, highlighted in marigold. The gap between the bars shrinks from 42 points to zero.">
+        <defs>
+          <filter id="wrna1bSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="23" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna1bHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna1bAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna1bH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna1bL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna1bS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna1bV { font: 800 13px Inter, sans-serif; fill: #6B0546; }
+          .wrna1bN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <text class="wrna1bH" x="30" y="30">SIMULATED SUCCESS (HATCHED) AGAINST REAL SUCCESSES IN 50 TRIALS (SOLID)</text>
+
+        <g filter="url(#wrna1bSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M256 48 L256 274"/>
+          <rect x="260" y="56" width="480" height="18" rx="4" fill="url(#wrna1bHc)"/>
+          <rect x="260" y="78" width="278" height="18" rx="4" fill="#FCEFF7"/>
+          <rect x="260" y="112" width="473" height="18" rx="4" fill="url(#wrna1bHc)"/>
+          <rect x="260" y="134" width="355" height="18" rx="4" fill="#FCEFF7"/>
+          <rect x="260" y="168" width="473" height="18" rx="4" fill="url(#wrna1bHc)"/>
+          <rect x="260" y="190" width="442" height="18" rx="4" fill="#FCEFF7"/>
+          <rect x="260" y="224" width="470" height="18" rx="4" fill="url(#wrna1bHc)"/>
+          <rect x="260" y="246" width="470" height="18" rx="4" fill="#F4B63C"/>
+          <!-- doodle: a parcel -->
+          <rect x="806" y="40" width="34" height="24" rx="2" fill="#FFFFFF"/>
+          <path d="M806 50 L840 50 M823 40 L823 64" stroke="#B5338B"/>
+        </g>
+
+        <text class="wrna1bL" x="240" y="82" text-anchor="end">No randomization</text>
+        <text class="wrna1bL" x="240" y="138" text-anchor="end">Lighting randomized</text>
+        <text class="wrna1bL" x="240" y="194" text-anchor="end">+ camera pose</text>
+        <text class="wrna1bL" x="240" y="250" text-anchor="end">+ 20 real demos</text>
+        <text class="wrna1bS" x="240" y="98" text-anchor="end">gap 42 points</text>
+        <text class="wrna1bS" x="240" y="154" text-anchor="end">gap 24.6 points</text>
+        <text class="wrna1bS" x="240" y="210" text-anchor="end">gap 6.6 points</text>
+        <text class="wrna1bS" x="240" y="266" text-anchor="end">gap 0</text>
+
+        <text class="wrna1bV" x="752" y="70">100%</text>
+        <text class="wrna1bV" x="550" y="92">29 / 50</text>
+        <text class="wrna1bV" x="745" y="126">98.6%</text>
+        <text class="wrna1bV" x="627" y="148">37 / 50</text>
+        <text class="wrna1bV" x="745" y="182">98.6%</text>
+        <text class="wrna1bV" x="714" y="204">46 / 50</text>
+        <text class="wrna1bV" x="745" y="238">98.0%</text>
+        <text class="wrna1bV" x="742" y="260">49 / 50</text>
+
+        <text class="wrna1bN" x="30" y="302">Constructed: Wrenfield's seeded bench, seed 1122, computed in the browser (practitioner session 10). The real cell is dimmer</text>
+        <text class="wrna1bN" x="30" y="320">than the simulator, its camera sits elsewhere and its lens magnifies by 8 percent; each rung removes one surprise.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the simulator's score barely moves; the real score is the one that tells you which surprise you just removed.</figcaption>
+    </figure>
+
+    <div class="wk" id="wrna1-gap">
+      <div class="wk-head">
+        <b>Live</b>
+        <span class="wk-hint">Pick a rung. The engine trains Wrenfield's tiny grasp policy on 400 simulated episodes in your browser, then scores it in the simulator and on 50 constructed real trials. Everything here is synthetic and labelled so.</span>
+      </div>
+      <div class="wk-body">
+        <label class="sql-label" for="wrna1-pick">Rung of the ladder</label>
+        <select class="sql-code" id="wrna1-pick"></select>
+        <div id="wrna1-out"></div>
+        <p class="sql-note" id="wrna1-verdict">...</p>
+      </div>
+      <div class="wk-foot" id="wrna1-self">...</div>
+    </div>
+
+    <details class="card" open>
+      <summary><span class="mode live">Live</span>What the research found, read at the source<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>Tobin and colleagues (2017) trained an object detector on simulated images only, with deliberately unrealistic random textures, random lights, random distractor objects and a camera placed at random inside a 10 by 5 by 10 centimetre box around its rough real position. On real images it located objects to within 1.5 cm on average, and a robot using it picked the target in 38 of 40 cluttered trials.</p>
+        <p>The same paper is honest about the gap. In simulation the detector's error was 0.3 to 0.5 cm, so it still over-fitted the simulator. And since no real data was used in training, the authors note that no validation on real data could be done during training. The real check came afterwards, on a real robot, in tens of trials.</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode live">Live</span>Three misreadings to stop on sight<span class="mini">3 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p><strong>"It works 100 percent in simulation."</strong> The simulator measured how well the policy fits the simulator. Ask for the real number and the trial count next to it.</p>
+        <p><strong>"More randomization is always safer."</strong> Mehta and colleagues (2019) report that randomizing uniformly can give "suboptimal, high-variance policies". Wrenfield's over-randomized run scores 47.9 percent in simulation and 19 of 50 on the real table. How wide is wide enough is an open question (practitioner session 6).</p>
+        <p><strong>"We will fix the real gap with more simulation."</strong> Some gaps only real data can reveal. Wrenfield's real lens magnifies by 8 percent and no simulator setting knew it; twenty real demonstrations fixed what no width could (practitioner session 10).</p>
+      </div>
+    </details>
+
+    <details class="card">
+      <summary><span class="mode self">Self-study</span>Where serious people disagree<span class="mini">4 min</span><span class="caret">▶</span></summary>
+      <div class="body">
+        <p>When general-purpose robots will work outside controlled cells, and whether scale of data alone will get there, are open questions. Forecasts have been made and missed in both directions, and the people closest to the work disagree. No page here gives a date.</p>
+        <p>What the published evidence does show is narrower. Pooling data from many robots helped in one large study and hurt in another part of the same study: the Open X-Embodiment collaboration (2023) reports a 50 percent higher success rate on small-data robots and a model that underfit and did worse on the large-data ones (practitioner session 4). A leader should expect "it depends on the robot and the data" to be the honest answer for some time.</p>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ PART 3 ============ -->
+  <section class="section" id="part-3">
+    <div class="section-kicker">
+      <span class="klabel">Part 3 · build-along</span>
+      <h2>Five questions to put to any robot data claim</h2>
+      <span class="tag demo">★ 17 min · everyone builds</span>
+    </div>
+    <p class="lede">No code. Take one claim you have seen or will be asked to sign off, about a robot, a policy or a dataset, and run it through five questions in order. The figure is why the order matters: one sentence like "it picks parcels 90 percent of the time" hides five decisions somebody made.</p>
+
+    <figure class="zoomable">
+      <svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Hand drawn anatomy of a claim. The sentence it picks parcels 90 percent of the time sits on top. Five arrows drop to five hidden decisions: how many trials, 9 of 10 or 90 of 100; which conditions, lighting, parcel sizes, positions; who defined success and who judged it; was anyone teleoperating or resetting; simulator or real robot, highlighted in marigold.">
+        <defs>
+          <filter id="wrna1cSk" x="-3%" y="-3%" width="106%" height="106%"><feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="31" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/></filter>
+          <pattern id="wrna1cHc" patternUnits="userSpaceOnUse" width="7" height="7" patternTransform="rotate(-38)"><line x1="0" y1="0" x2="0" y2="7" stroke="#9B0865" stroke-width="1" opacity=".5"/></pattern>
+          <marker id="wrna1cAr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M1 1 L9 5 L1 9" fill="none" stroke="#2A1222" stroke-width="1.6" stroke-linecap="round"/></marker>
+        </defs>
+        <style>
+          .wrna1cH { font: 800 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna1cL { font: 600 12px Inter, sans-serif; fill: #2A1222; }
+          .wrna1cS { font: 400 11px Inter, sans-serif; fill: #66505E; }
+          .wrna1cK { font: 400 11px Inter, sans-serif; fill: #2A1222; }
+          .wrna1cV { font: 800 16px Inter, sans-serif; fill: #6B0546; }
+          .wrna1cN { font: 400 12px Inter, sans-serif; fill: #66505E; }
+        </style>
+
+        <g filter="url(#wrna1cSk)" fill="none" stroke="#2A1222" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="230" y="24" width="420" height="46" rx="10" transform="rotate(-0.4 440 47)" fill="#FCEFF7"/>
+          <path d="M300 72 L105 128" marker-end="url(#wrna1cAr)"/>
+          <path d="M380 72 L275 128" marker-end="url(#wrna1cAr)"/>
+          <path d="M440 72 L445 128" marker-end="url(#wrna1cAr)"/>
+          <path d="M500 72 L615 128" marker-end="url(#wrna1cAr)"/>
+          <path d="M580 72 L785 128" marker-end="url(#wrna1cAr)"/>
+          <rect x="30" y="132" width="150" height="88" rx="8" transform="rotate(-0.6 105 176)" fill="#FFFFFF"/>
+          <rect x="200" y="132" width="150" height="88" rx="8" transform="rotate(0.5 275 176)" fill="#FFFFFF"/>
+          <rect x="370" y="132" width="150" height="88" rx="8" transform="rotate(-0.4 445 176)" fill="#FFFFFF"/>
+          <rect x="540" y="132" width="150" height="88" rx="8" transform="rotate(0.6 615 176)" fill="#FFFFFF"/>
+          <rect x="710" y="132" width="150" height="88" rx="8" transform="rotate(-0.5 785 176)" fill="#F4B63C"/>
+        </g>
+
+        <text class="wrna1cV" x="440" y="53" text-anchor="middle">"It picks parcels 90% of the time"</text>
+
+        <text class="wrna1cL" x="46" y="156">1 How many trials?</text>
+        <text class="wrna1cS" x="46" y="178">9 of 10 is not</text>
+        <text class="wrna1cS" x="46" y="194">90 of 100</text>
+        <text class="wrna1cL" x="216" y="156">2 Which conditions?</text>
+        <text class="wrna1cS" x="216" y="178">light, parcel sizes,</text>
+        <text class="wrna1cS" x="216" y="194">where they sat</text>
+        <text class="wrna1cL" x="386" y="156">3 Whose success?</text>
+        <text class="wrna1cS" x="386" y="178">who wrote the rule,</text>
+        <text class="wrna1cS" x="386" y="194">who judged it</text>
+        <text class="wrna1cL" x="556" y="156">4 Any human help?</text>
+        <text class="wrna1cS" x="556" y="178">teleoperated, reset,</text>
+        <text class="wrna1cS" x="556" y="194">nudged, re-shot</text>
+        <text class="wrna1cL" x="726" y="156">5 Sim or real?</text>
+        <text class="wrna1cK" x="726" y="178">and was the real</text>
+        <text class="wrna1cK" x="726" y="194">camera checked?</text>
+
+        <text class="wrna1cN" x="30" y="252">A claim that answers none of the five is a video, not evidence. Leader sessions 3 and 4 take questions 1 to 4 apart;</text>
+        <text class="wrna1cN" x="30" y="270">practitioner sessions 6 and 10 take question 5 apart.</text>
+      </svg>
+      <figcaption>🔍 Click to zoom - the marigold box is the one people skip most: a simulated success rate quoted as if a real robot earned it.</figcaption>
+    </figure>
+
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Write the claim down in one sentence</h4>
+        <p>Exactly as it was made: "the robot picks parcels 90 percent of the time", "the new policy is twice as good", "trained on a million episodes". Underline the number and the comparison word.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Ask how many trials</h4>
+        <p>Write the count next to the rate. 9 of 10 and 90 of 100 are both 90 percent and are very different evidence; leader session 3 shows how different. If there is no count, write "no count" and stop there.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Ask which conditions</h4>
+        <p>Lighting, parcel sizes, where the parcels sat, which robot, which day. A rate from a tidy demo cell says little about a cluttered packing bench at night.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Ask who defined success, and who judged it</h4>
+        <p>Was a parcel dropped after lifting a success? Kress-Gazit and colleagues (2024) recommend a clear, detailed, unambiguous definition, written by the person who designed the behaviour but judged by someone else.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Ask about human help, and sim or real</h4>
+        <p>Was anyone teleoperating, resetting or nudging during the attempts? Was the number measured in a simulator? Leader session 4 is about the videos where these answers are hidden.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Commit to a guess about Wrenfield</h4>
+        <p>Wrenfield's lighting-randomized policy got 37 of 50 real grasps. Write down whether you think one more change (randomizing the camera position too) will move that a lot or a little. Practitioner session 6 checks the guess.</p>
+      </div></div>
+    </div>
+
+    <div class="callout tip">
+      <p><strong>The habit to keep.</strong> When someone shows you a robot number, do not ask whether it is good. Ask how many trials, which conditions, whose definition of success, what human help, and sim or real. A rate with no trial count is not a small claim; it is no claim.</p>
+    </div>
+  </section>
+
+  <!-- ============ QUIZ ============ -->
+  <section class="section" id="quiz">
+    <div class="section-kicker">
+      <span class="klabel">Check yourself</span>
+      <h2>Three questions</h2>
+    </div>
+
+    <div class="quiz-q" data-answer="1">
+      <p class="qtext">Wrenfield's first policy (constructed) grasps 100 percent of simulated parcels and 29 of 50 real ones. What is the right reading?</p>
+      <button class="qopt" type="button">A · The real trials were unlucky; the simulator's 100 percent is the policy's true ability</button>
+      <button class="qopt" type="button">B · The simulator measured fit to the simulator; the real table differs in ways the simulator did not vary, and the real number is the one that counts</button>
+      <button class="qopt" type="button">C · Fifty trials are too few to say anything at all</button>
+      <p class="qwhy">The simulator had one lighting level and one camera position, so the policy never learned to cope with others. Fifty trials do say something: 29 of 50 has a 95 percent interval of about 44 to 71 percent, far from 100 (leader session 3).</p>
+    </div>
+
+    <div class="quiz-q" data-answer="2">
+      <p class="qtext">Why must a robot dataset record which policy was running when each episode was collected?</p>
+      <button class="qopt" type="button">A · For billing the compute</button>
+      <button class="qopt" type="button">B · Because file names must be unique</button>
+      <button class="qopt" type="button">C · Because the policy's own actions changed what was recorded next, so episodes from different policies are samples of different situations</button>
+      <p class="qwhy">The loop feeds on itself. A warehouse row records an event that would have happened anyway; a robot episode records what one policy did and what followed from it.</p>
+    </div>
+
+    <div class="quiz-q" data-answer="0">
+      <p class="qtext">Tobin et al. (2017) report a detector trained only in simulation that located real objects to within 1.5 cm and supported 38 grasps in 40 trials. What did the paper also say?</p>
+      <button class="qopt" type="button">A · The detector still over-fitted the simulator, with 0.3 to 0.5 cm error there, and no real data could be used to validate during training</button>
+      <button class="qopt" type="button">B · Simulation and real performance were identical</button>
+      <button class="qopt" type="button">C · Camera randomization made the results worse</button>
+      <p class="qwhy">The authors are explicit about the remaining gap. Their ablation found camera randomization gave "a slight accuracy boost" (2.0 cm error without it against 1.3 cm with it, objects alone), not a loss.</p>
+    </div>
+
+    <div class="quiz-score"></div>
+  </section>
+
+  <!-- ============ HOMEWORK ============ -->
+  <section class="section" id="homework">
+    <div class="section-kicker">
+      <span class="klabel">Before session 2</span>
+      <h2>Homework</h2>
+    </div>
+    <p class="lede">Twenty minutes, on one claim and on the loop.</p>
+    <div class="steps">
+      <div class="step"><div>
+        <h4>Run the five questions on one real claim</h4>
+        <p>Pick a public statement or video about a robot learning a task, from any source, and write one line per question. Do not judge the claim; mark which questions it leaves unanswered.</p>
+      </div></div>
+      <div class="step"><div>
+        <h4>Draw your own loop</h4>
+        <p>For any process you know that learns from its own outputs (a recommender, a pricing rule), draw the five turns and mark where its data depends on its last decision. Leader session 5 comes back to this.</p>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- ============ OFFICIAL ============ -->
+  <section class="section" id="official">
+    <div class="section-kicker">
+      <span class="klabel">Covered tonight</span>
+      <h2>What this session teaches, and where it came from</h2>
+    </div>
+    <div class="covered">
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The robot as a loop</span><span class="note">Sense, decide, act, log, learn; the data depends on the policy that collected it.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Where the data team sits</span><span class="note">Calibration, demonstrations, episodes, evaluation trials, simulation.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">An episode is not a row</span><span class="note">Zhao, Kumar, Levine and Finn (2023), arXiv 2304.13705: 50 Hz, 4 cameras, leader joint positions as actions, 25 real trials per task. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Domain randomization and its gap</span><span class="note">Tobin et al. (2017), arXiv 1703.06907: 1.5 cm, 38 of 40, 0.3 to 0.5 cm in sim. Read at source.</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">Uniform randomization can mislead</span><span class="note">Mehta et al. (2019), "Active Domain Randomization", arXiv 1904.04762. Read at source (abstract).</span></div>
+      <div class="covered-row"><span class="status pill solid">✓</span><span class="name">The Wrenfield ladder</span><span class="note">Constructed and computed in the page: 29, 37, 46, 49 of 50; over-randomized 19 of 50.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Pooling data across robots</span><span class="note">Named tonight (Open X-Embodiment 2023). Practitioner session 4.</span></div>
+      <div class="covered-row"><span class="status pill inkpill">◐</span><span class="name">Success rates from tens of trials</span><span class="note">Named tonight. Leader session 3, practitioner session 7.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Rare events over millions of miles</span><span class="note">Live in <a href="https://phoebefu6.github.io/learn-autonomous-driving-with-phoebe/">learn autonomous driving</a>.</span></div>
+      <div class="covered-row"><span class="status pill light">○</span><span class="name">Real companies, robots or products</span><span class="note">Out of scope by design. Wrenfield is constructed; nothing here is investment advice or a view on any company.</span></div>
+    </div>
+    <p class="mono">Every fact on this page, and its verification tier, is recorded in the course's source map.</p>
+  </section>
+
+  <!-- ============ CHEAT SHEET ============ -->
+  <section class="section" id="cheatsheet">
+    <div class="section-kicker">
+      <span class="klabel">Take this with you</span>
+      <h2>Cheat sheet</h2>
+    </div>
+    <div class="cheat">
+      <div class="cheat-item"><strong>The one sentence.</strong> A learning robot is a loop, and every dataset is a dataset of the policy that collected it.</div>
+      <div class="cheat-item"><strong>Five turns.</strong> Sense, decide, act, log, learn.</div>
+      <div class="cheat-item"><strong>Five seats.</strong> Calibration, demonstrations, episodes, evaluation trials, simulation.</div>
+      <div class="cheat-item"><strong>An episode is not a row.</strong> Many cameras and joints on one clock, plus a success flag a person decided.</div>
+      <div class="cheat-item"><strong>Sim is not the judge.</strong> Wrenfield: 100 percent simulated, 29 of 50 real, before randomization.</div>
+      <div class="cheat-item"><strong>Some gaps need real data.</strong> No simulator width finds a lens the simulator does not model.</div>
+      <div class="cheat-item"><strong>The cost.</strong> Real trials take a person resetting the table; expect tens, not millions.</div>
+      <div class="cheat-item"><strong>Five questions.</strong> How many trials? Which conditions? Whose success? Any human help? Sim or real?</div>
+    </div>
+  </section>
+
+  <div class="callout next">
+    <span class="nx-pill">Next session</span>
+    <p><strong>Demonstrations are the dataset.</strong> Where the labelled data comes from when the label is a person driving the arm, and what it costs per minute.</p>
+  </div>
+
+  <footer class="pagefoot">
+    <div class="wrap">
+      <p>Leader session 1 of 6 · learn-physical-ai-robotics-with-phoebe · by Phoebe Fu &nbsp;·&nbsp; 📚 <a href="https://phoebefu6.github.io/learn-with-phoebe/">Learn with Phoebe ↗</a></p>
+      <nav class="pagenav">
+        <a href="../index.html">← All sessions</a>
+        <a href="a2-demonstrations-are-the-dataset.html">Next: Demonstrations are the dataset →</a>
+      </nav>
+    </div>
+  </footer>
+
+</main>
+
+<script src="../assets/pai-live.js?v=1"></script>
+<script src="../assets/app.js?v=1"></script>
+<script>
+(function () {
+  if (typeof PAI === "undefined") return;
+  var sel = document.getElementById("wrna1-pick");
+  var out = document.getElementById("wrna1-out");
+  var verdict = document.getElementById("wrna1-verdict");
+  var self = document.getElementById("wrna1-self");
+  if (!sel || !out) return;
+  var L = PAI.ladder({});
+  var rows = L.rungs.concat([L.anti]);
+  rows.forEach(function (r, i) {
+    var o = document.createElement("option");
+    o.value = String(i);
+    o.textContent = (i < 4 ? "Rung " + (i + 1) + " · " : "Anti-lever · ") + r.label;
+    sel.appendChild(o);
+  });
+  function pct(x) { return (100 * x).toFixed(1) + "%"; }
+  function render() {
+    var r = rows[Number(sel.value)];
+    out.innerHTML = '<table class="sql-table"><thead><tr><th>Measure</th><th>Value</th></tr></thead><tbody>' +
+      "<tr><td>Simulated success, 1,000 simulated episodes</td><td><b>" + pct(r.sim) + "</b></td></tr>" +
+      "<tr><td>Real successes, 50 constructed trials</td><td><b>" + r.real.k + " / " + r.real.n + "</b></td></tr>" +
+      "<tr><td>Wilson 95% interval on the real rate</td><td>" + pct(r.real.ci.lo) + " to " + pct(r.real.ci.hi) + "</td></tr>" +
+      "<tr><td>Sim-to-real gap</td><td>" + (100 * r.gap).toFixed(1) + " points</td></tr></tbody></table>";
+    verdict.textContent = r.id === "over"
+      ? "Over-randomized: the simulator itself now scores " + pct(r.sim) + " and the real table " + r.real.k + " of 50. Widening everything made the policy worse in both places."
+      : r.label + ": the simulator says " + pct(r.sim) + ", the real table says " + r.real.k + " of 50. Only the second number is the one a customer would see.";
+  }
+  sel.addEventListener("change", render);
+  render();
+  var st = PAI.selfTestResult || PAI.selfTest();
+  self.textContent = st.pass
+    ? "Synthetic and constructed: Wrenfield, its cell and its trials are generated (seed 1122). The engine's " + st.checks.length + " self-checks pass in this browser."
+    : "The engine's self-check did not pass in this browser, so nothing above should be believed.";
+})();
+</script>
+<style>
+  #wrna1-gap .sql-code { border: 1px solid var(--hairline); border-radius: 8px; max-width: 24rem; }
+  #wrna1-gap table.sql-table { margin: .6rem 0 .2rem; font-size: .85rem; }
+</style>
+</body>
+</html>
