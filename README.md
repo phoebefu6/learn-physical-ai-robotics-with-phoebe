@@ -1,3 +1,8 @@
+<!-- learn-with-phoebe hub banner -->
+> ### 📚 Part of [**Learn with Phoebe**](https://phoebefu6.github.io/learn-with-phoebe/)
+> The shelf of 208 free, hands-on courses on AI, data, and the craft around them. **[Browse every course ↗](https://phoebefu6.github.io/learn-with-phoebe/)**
+<!-- /learn-with-phoebe hub banner -->
+
 # Learn Physical AI & Robotics with Phoebe
 
 Sixteen 45-minute sessions on physical AI and robotics as a data problem: what changes when a model's output moves a physical arm.
